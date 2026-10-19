@@ -119,7 +119,7 @@ input[type=color]{padding:2px;height:40px;width:64px}input[type=checkbox]{width:
 .pbio{background:var(--rail);border-radius:8px;padding:10px;margin:12px 0 6px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
 .pact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 #pf form{padding:4px 20px 20px}
-#sv{position:fixed;inset:0;background:var(--main);z-index:30;display:grid;grid-template-columns:220px 1fr;overflow:hidden}
+#sv,#bp{position:fixed;inset:0;background:var(--main);z-index:30;display:grid;grid-template-columns:220px 1fr;overflow:hidden}
 .svn{background:var(--side);padding:24px 12px;display:flex;flex-direction:column;gap:4px}
 .svn h4{color:var(--mute);font-size:12px;padding:0 12px 8px}
 .svn button{text-align:left;padding:8px 12px;border-radius:6px;background:none;color:var(--mute)}
@@ -130,7 +130,7 @@ input[type=color]{padding:2px;height:40px;width:64px}input[type=checkbox]{width:
 .chk{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;padding:10px 12px;width:100%;min-height:90px;font:inherit;color:inherit}
 .bottag{background:var(--green);color:var(--ink);font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-right:6px}
-@media(max-width:700px){#sv{grid-template-columns:1fr;grid-template-rows:auto 1fr}.svn{flex-direction:row;overflow-x:auto;padding:12px 56px 12px 12px}.svn h4{display:none}.svc{padding:16px}}
+@media(max-width:700px){#sv,#bp{grid-template-columns:1fr;grid-template-rows:auto 1fr}.svn{flex-direction:row;overflow-x:auto;padding:12px 56px 12px 12px}.svn h4{display:none}.svc{padding:16px}}
 #mp{position:absolute;bottom:52px;left:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:240px;max-height:220px;overflow-y:auto;z-index:5}
 #mp button{display:flex;justify-content:space-between;gap:16px;width:100%;text-align:left;background:none;padding:6px 10px;border-radius:4px}
 #mp button:hover{background:var(--hover)}#mp small{color:var(--mute)}
@@ -174,6 +174,13 @@ textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;p
   .svx{top:calc(14px + env(safe-area-inset-top))}
 }
 @media(hover:none){.m .t{display:none}}
+.bphead{display:flex;align-items:center;gap:10px;padding:0 12px 16px;font-size:17px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:12px 0}
+.stat{background:var(--side);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:2px}
+.stat b{font-size:26px}.stat small{color:var(--mute)}
+input.sw{-webkit-appearance:none;appearance:none;width:42px;height:24px;padding:0;border-radius:12px;background:var(--hover);border:1px solid var(--line);position:relative;cursor:pointer;flex:none;transition:background .15s}
+input.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--text);transition:transform .15s}
+input.sw:checked{background:var(--green)}input.sw:checked::after{transform:translateX(18px);background:var(--ink)}
 </style>
 </head>
 <body>
@@ -196,7 +203,7 @@ textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;p
   <div id="scrim"></div>
   <nav class="rail" id="rail"></nav>
   <aside class="side">
-    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
+    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="bpbtn" title="Painel do ConcordBot" hidden>🤖</button><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
     <div id="chans"></div>
     <div class="me"><div id="meav"></div><b id="mename"></b><button class="icon" id="settings" title="Configurações">⚙</button><button class="icon" id="logout" title="Sair">⏻</button></div>
   </aside>
@@ -223,6 +230,8 @@ textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;p
 </dialog>
 
 <div id="sv" hidden><nav class="svn" id="svn"></nav><div class="svc" id="svc"></div><button class="icon svx" id="svx" title="Fechar">✕</button></div>
+
+<div id="bp" hidden><nav class="svn" id="bpn"></nav><div class="svc" id="bpc"></div><button class="icon svx" id="bpx" title="Fechar">✕</button></div>
 
 <dialog id="pf"><div id="pf-body"></div><form method="dialog"><button class="btn ghost">Fechar</button></form></dialog>
 
@@ -413,7 +422,7 @@ function selectServer(id, name) {
   on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); svRefresh(); });
   on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
   on(subs, db.ref('bots/' + id), 'value', s => { bots = s.val() || {}; svRefresh(); });
-  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); });
+  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); bpRefresh(); });
   on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
   on(subs, db.ref('mutes/' + id), 'value', s => { mutes = s.val() || {}; });
   on(subs, db.ref(`kicks/${id}/${me.uid}`), 'value', s => { if (s.exists()) { db.ref(`kicks/${id}/${me.uid}`).remove(); forceLeave(id, 'expulso'); } });
@@ -505,11 +514,12 @@ $('#box').addEventListener('keydown', e => {
   const text = e.target.value.trim(); if (!text || !curChannel) return;
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   if (curServer !== 'dm' && /(^|\s)@(everyone|here)(?![\wÀ-ÿ])/i.test(text) && !can('admin')) return toast('Só o dono ou administradores podem usar @everyone e @here.');
+  const am = automod(text); if (am) { toast('🛡 AutoMod: ' + am); return; }
   e.target.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove();
   db.ref(`messages/${curServer}/${curChannel}`).push({
     uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true,
     text: text.slice(0, 4000), ts: firebase.database.ServerValue.TIMESTAMP
-  }); runBots(text); concordBot(text);
+  }); runBots(text); concordBot(text); giveXp();
 });
 let tTimer;
 $('#box').addEventListener('input', () => {
@@ -521,7 +531,7 @@ $('#box').addEventListener('input', () => {
 /* ---------- membros ---------- */
 function renderMembers() {
   const box = $('#mem'); box.replaceChildren();
-  if (curServer && curServer !== 'dm') { const r = el('div', 'u'), t = el('span', 'bottag', 'BOT'); t.style.marginLeft = '6px'; r.append(botAv(), el('span', null, 'ConcordBot'), t); box.append(el('h4', null, 'Bots'), r); }
+  if (curServer && curServer !== 'dm') { const r = el('div', 'u'), t = el('span', 'bottag', 'BOT'); t.style.marginLeft = '6px'; r.append(botAv(), el('span', null, 'ConcordBot'), t); r.style.cursor = 'pointer'; r.title = 'Abrir painel do ConcordBot'; r.onclick = () => openBP(); box.append(el('h4', null, 'Bots'), r); }
   const all = Object.entries(members);
   const on_ = all.filter(([id]) => presence[id]), off = all.filter(([id]) => !presence[id]);
   [['Online — ' + on_.length, on_], ['Offline — ' + off.length, off]].forEach(([t, arr]) => {
@@ -574,7 +584,7 @@ function showHome() {
   if (innerWidth <= 700) document.body.classList.add('nav-open');
   clear(chanSubs); clear(msgSubs); curHome = true; curServer = null; curChannel = null; members = {}; renderMembers();
   document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('home')));
-  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
+  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#bpbtn').hidden = true; $('#bp').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
   $('#msgs').replaceChildren(el('div', 'empty', 'Adicione amigos pelo nome de usuário, converse por mensagem direta e ligue para eles.'));
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Enviar mensagem';
   const c = $('#chans'); c.replaceChildren();
@@ -735,7 +745,7 @@ const roleColor = uid => { const r = Object.keys(mroles[uid] || {}).map(k => rol
 function calcPerms() {
   myRoles = mroles[me.uid] || {}; perms = {};
   Object.keys(myRoles).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
-  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; renderChans();
+  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; $('#bpbtn').hidden = !isOwner(); renderChans();
 }
 function renderChans() {
   if (curHome || !curServer || curServer === 'dm') return;
@@ -755,10 +765,10 @@ $('#svx').onclick = () => $('#sv').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sv').hidden = true; });
 function renderSV() {
   const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
-  const tabs = [['general', 'Geral', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots', isOwner()], ['bot', '🤖 ConcordBot', isOwner()]].filter(t => t[2]);
+  const tabs = [['general', 'Geral', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots extras', isOwner()]].filter(t => t[2]);
   if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
   tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { svTab = k; editCh = null; renderSV(); }; n.append(b); });
-  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots, bot: svBot })[svTab](c);
+  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots })[svTab](c);
 }
 function roleChecks(title, sel) {
   const box = el('div'), row = el('div', 'chk'), set = { ...(sel || {}) }; box.append(el('small', null, title));
@@ -948,7 +958,7 @@ const CB = {
 async function concordBot(text) {
   const px = cfg.prefix || '!'; if (!text.startsWith(px)) return; text = '!' + text.slice(px.length);
   const [c, ...a] = text.trim().split(/\s+/), cmd = c.toLowerCase(), cu = Object.values(cfg.cmds || {}).find(x => '!' + x.name === cmd);
-  const f = cu ? () => (cu.admin && !can('admin') ? '⛔ Só administradores podem usar este comando.' : fillVars(cu.reply)) : CB[cmd]; if (!f) return;
+  const f = cu ? () => (cu.admin && !can('admin') ? '⛔ Só administradores podem usar este comando.' : fillVars(cu.reply)) : CB[cmd]; if (!f) return; if (CAT[cmd] && (cfg.off || {})[CAT[cmd]]) return;
   try { const r = await f(a, a.join(' ')); if (r) await say(r); }
   catch (e) { toast('ConcordBot: ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
@@ -1101,36 +1111,124 @@ CB['!ajuda'] = () => {
   return (_help() + (cfg.eco === false ? '' : '\n💰 Economia: !saldo !daily !trabalhar !apostar N !transferir @p N !top !loja !comprar item !inventario !dar @p N') + (cu ? '\n⭐ Personalizados: ' + cu : '')).replace(/!/g, px);
 };
 
-/* painel do ConcordBot (aba em ⚙ do servidor) */
-function svBot(c) {
-  const R = () => db.ref('botcfg/' + curServer);
-  const card = t => { const d = el('div', 'card2'); d.append(el('h3', null, t)); c.append(d); return d; };
-  const inp = (ph, v, type) => { const i = el('input'); i.placeholder = ph; i.value = v ?? ''; if (type) i.type = type; return i; };
-  const chk = (t, v) => { const l = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; i.checked = !!v; l.append(i, el('span', null, t)); return [l, i]; };
-  const save = (d, fn) => { const b = el('button', 'btn', 'Salvar'); b.onclick = async () => { try { await fn(); toast('Salvo!'); } catch (e) { toast('Erro: ' + e.message); } }; d.append(b); };
-  const row = (d, txt, fn) => { const r = el('div', 'row'), t = el('span', null, txt), x = el('button', 'icon', '🗑'); t.style.flex = 1; x.onclick = fn; r.append(t, x); d.append(r); };
-  c.append(el('h2', null, '🤖 Painel do ConcordBot'));
-  let d = card('Geral'); const px = inp('Prefixo dos comandos (padrão !)', cfg.prefix); px.maxLength = 2; const [l1, eco] = chk('Economia ativada', cfg.eco !== false); d.append(px, l1);
-  save(d, () => R().update({ prefix: px.value.trim() || null, eco: eco.checked }));
-  [['welcome', '👋 Boas-vindas', 'Bem-vindo(a) {mention} a {server}! Agora somos {count} membros. 🎉'], ['bye', '🚪 Despedida', '{user} saiu de {server}. Até mais!']].forEach(([k, t, ph]) => {
-    const w = cfg[k] || {}; d = card(t); const [l, act] = chk('Ativada', w.on), sel = el('select'), tx = el('textarea'), none = el('option', null, '— escolha o canal —'); none.value = ''; sel.append(none);
-    Object.entries(curChans).filter(([, x]) => x.type !== 'voice').forEach(([id, x]) => { const o = el('option', null, '# ' + x.name); o.value = id; sel.append(o); });
-    sel.value = w.channel || ''; tx.placeholder = ph; tx.value = w.text || ''; d.append(l, sel, tx, el('small', null, 'Variáveis: {user} {mention} {server} {count}'));
-    save(d, () => R().child(k).set({ on: act.checked, channel: sel.value, text: tx.value.slice(0, 500) }));
-  });
-  d = card('Comandos personalizados'); const cn = inp('nome do comando, sem o prefixo (ex.: regras)'), cr = el('textarea'), [l2, adm] = chk('Só administradores'), add = el('button', 'btn', 'Criar comando');
-  cr.placeholder = 'Resposta. Variáveis: {user} {server} {count} {channel} {random}'; d.append(cn, cr, l2, add);
-  add.onclick = () => {
-    const n = cn.value.trim().toLowerCase().replace(/[^a-z0-9áàâãéêíóôõúç_-]/g, ''); if (!n || !cr.value.trim()) return toast('Preencha o nome e a resposta.');
-    if (CB['!' + n]) return toast('Esse nome já é um comando do bot.'); R().child('cmds').push({ name: n, reply: cr.value.slice(0, 1000), admin: adm.checked });
-  };
-  Object.entries(cfg.cmds || {}).forEach(([id, x]) => row(d, (cfg.prefix || '!') + x.name + (x.admin ? ' 🔒' : '') + ' → ' + x.reply.slice(0, 50), () => R().child('cmds/' + id).remove()));
-  d = card('💰 Economia'); const cu = inp('Símbolo da moeda (ex.: 🪙)', cfg.currency), dl = inp('Valor do !daily (padrão 200)', cfg.daily, 'number'), w1 = inp('Mínimo do !trabalhar (padrão 50)', cfg.workMin, 'number'), w2 = inp('Máximo do !trabalhar (padrão 150)', cfg.workMax, 'number');
-  d.append(cu, dl, w1, w2); save(d, () => R().update({ currency: cu.value.trim().slice(0, 8) || null, daily: +dl.value || null, workMin: +w1.value || null, workMax: +w2.value || null }));
-  d = card('🛒 Loja'); const sn = inp('Nome do item'), sp = inp('Preço', '', 'number'), sa = el('button', 'btn', 'Adicionar item'); d.append(sn, sp, sa);
-  sa.onclick = () => { if (!sn.value.trim() || !(+sp.value > 0)) return toast('Informe o nome e um preço maior que 0.'); R().child('shop').push({ name: sn.value.trim().slice(0, 30), price: Math.floor(+sp.value) }); };
-  Object.entries(cfg.shop || {}).forEach(([id, x]) => row(d, x.name + ' — ' + money(x.price), () => R().child('shop/' + id).remove()));
+
+/* ---------- auto-moderação e níveis ---------- */
+const CAT = {}; ['!dado', '!moeda', '!8ball', '!piada', '!fato', '!escolher', '!abraco', '!ship', '!calc', '!enquete'].forEach(k => CAT[k] = 'fun');
+['!ping', '!hora', '!servidor', '!perfil'].forEach(k => CAT[k] = 'util'); ['!kick', '!ban', '!unban', '!mute', '!unmute', '!avisar', '!limpar'].forEach(k => CAT[k] = 'mod');
+let spamT = [], lastXp = 0;
+function automod(text) {
+  const a = cfg.am; if (!a || !a.on || curServer === 'dm' || can('admin')) return null;
+  const now = Date.now(), low = text.toLowerCase(); spamT = spamT.filter(t => now - t < 8000);
+  const words = (a.words || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean), letters = text.replace(/[^A-Za-zÀ-ÿ]/g, '').length;
+  const why = a.links && /(https?:\/\/|www\.|discord\.gg\/)\S+/i.test(text) ? 'links não são permitidos aqui.'
+    : words.some(w => low.includes(w)) ? 'sua mensagem tem uma palavra proibida.'
+    : a.caps && text.length > 10 && letters && text.replace(/[^A-ZÀ-Þ]/g, '').length / letters > .7 ? 'evite escrever tudo em MAIÚSCULAS.'
+    : a.spam && spamT.length >= 5 ? 'calma! Você está enviando mensagens rápido demais.' : null;
+  if (!why) { spamT.push(now); return null; }
+  if (a.log) db.ref(`messages/${curServer}/${a.log}`).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: `🛡 AutoMod bloqueou uma mensagem de ${me.name} em #${(curChans[curChannel] || {}).name}: ${why}`, ts: firebase.database.ServerValue.TIMESTAMP });
+  return why;
 }
+const lvl = xp => Math.floor(Math.sqrt(xp / 100));
+async function giveXp() {
+  if (!cfg.xp || !cfg.xp.on || curServer === 'dm' || Date.now() - lastXp < 60000) return; lastXp = Date.now();
+  const gain = 15 + Math.floor(Math.random() * 11), t = await ecoRef(me.uid).child('xp').transaction(v => (v || 0) + gain), xp = t.snapshot.val();
+  if (lvl(xp) > lvl(xp - gain) && cfg.xp.announce !== false) say(`🎉 ${me.name} subiu para o nível ${lvl(xp)}!`);
+}
+const X = fn => async (a, r) => !curServer || curServer === 'dm' ? '⛔ Só funciona em servidores.' : !(cfg.xp && cfg.xp.on) ? '📈 Os níveis estão desligados. O dono ativa no painel 🤖.' : fn(a, r);
+Object.assign(CB, {
+  '!nivel': X(async a => { const m = findMember(a[0]) || [me.uid, { name: me.name }], xp = (await ecoRef(m[0]).child('xp').get()).val() || 0, l = lvl(xp); return `📈 ${m[1].name}: nível ${l} · ${xp} XP · faltam ${(l + 1) ** 2 * 100 - xp} XP para o nível ${l + 1}`; }),
+  '!rank': X(async () => {
+    const v = (await db.ref('economy/' + curServer).get()).val() || {}, t = Object.entries(v).map(([id, x]) => [id, x.xp || 0]).filter(x => x[1]).sort((x, y) => y[1] - x[1]).slice(0, 5);
+    return t.length ? '🏅 Ranking de XP:\n' + t.map(([id, x], i) => `${['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i]} ${(members[id] || {}).name || '?'} — nível ${lvl(x)} (${x} XP)`).join('\n') : 'Ninguém ganhou XP ainda. Converse no chat!';
+  })
+});
+const _h2 = CB['!ajuda'];
+CB['!ajuda'] = () => _h2() + (cfg.xp && cfg.xp.on ? '\n📈 Níveis: ' + ['nivel', 'rank'].map(x => (cfg.prefix || '!') + x).join(' ') : '');
+
+/* ---------- PAINEL DO CONCORDBOT ---------- */
+let bpTab = 'home';
+const R = () => db.ref('botcfg/' + curServer);
+const bpRefresh = () => { if (!$('#bp').hidden && !(document.activeElement && document.activeElement.closest('#bpc input,#bpc textarea,#bpc select'))) renderBP(); };
+function openBP(t) {
+  if (!isOwner()) return toast('Só o dono do servidor acessa o painel do ConcordBot.');
+  bpTab = t || bpTab; $('#bp').hidden = false; renderBP();
+}
+$('#bpbtn').onclick = () => openBP(); $('#bpx').onclick = () => $('#bp').hidden = true;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#bp').hidden = true; });
+function kit(c) {
+  return {
+    card: t => { const d = el('div', 'card2'); if (t) d.append(el('h3', null, t)); c.append(d); return d; },
+    inp: (ph, v, type) => { const i = el('input'); i.placeholder = ph; i.value = v ?? ''; if (type) i.type = type; return i; },
+    chk: (t, v, fn) => { const l = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; i.className = 'sw'; i.checked = !!v; if (fn) i.onchange = () => fn(i.checked); l.append(i, el('span', null, t)); l.input = i; return l; },
+    save: (d, fn) => { const b = el('button', 'btn', 'Salvar'); b.onclick = async () => { try { await fn(); toast('Salvo!'); } catch (e) { toast('Erro: ' + e.message); } }; d.append(b); },
+    row: (d, txt, fn) => { const r = el('div', 'row'), t = el('span', null, txt), x = el('button', 'icon', '🗑'); t.style.flex = 1; x.onclick = fn; r.append(t, x); d.append(r); },
+    chans: sel => { const o0 = el('option', null, '— escolha o canal —'); o0.value = ''; sel.append(o0); Object.entries(curChans).filter(([, x]) => x.type !== 'voice').forEach(([id, x]) => { const o = el('option', null, '# ' + x.name); o.value = id; sel.append(o); }); }
+  };
+}
+function renderBP() {
+  const n = $('#bpn'), c = $('#bpc'), h = el('div', 'bphead'), lg = el('img'); n.replaceChildren(); c.replaceChildren();
+  lg.src = document.querySelector('.logo').src; lg.alt = ''; lg.style.cssText = 'width:38px;height:38px;border-radius:11px'; h.append(lg, el('b', null, 'ConcordBot')); n.append(h);
+  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP']].forEach(([k, l]) => {
+    const b = el('button', k === bpTab ? 'on' : '', l); b.onclick = () => { bpTab = k; renderBP(); }; n.append(b);
+  });
+  BP[bpTab](c, kit(c));
+}
+const BP = {
+  home(c, k) {
+    const st = el('div', 'stats');
+    [['👥', Object.keys(members).length, 'membros'], ['📺', Object.keys(curChans).length, 'canais'], ['🎭', Object.keys(roles).length, 'cargos'], ['⌨️', Object.keys(cfg.cmds || {}).length, 'comandos seus'], ['🛒', Object.keys(cfg.shop || {}).length, 'itens na loja']]
+      .forEach(([i, v, t]) => { const d = el('div', 'stat'); d.append(el('span', null, i), el('b', null, v), el('small', null, t)); st.append(d); });
+    c.append(el('h2', null, 'Visão geral'), el('small', null, $('#sname').textContent + ' · prefixo ' + (cfg.prefix || '!') + ' · digite ' + (cfg.prefix || '!') + 'ajuda no chat'), st);
+    const d = k.card('Módulos (ligue e desligue)'), off = cfg.off || {};
+    [['💰 Economia', cfg.eco !== false, v => R().update({ eco: v })], ['🎉 Comandos de diversão', !off.fun, v => R().child('off/fun').set(v ? null : true)],
+     ['🛠 Comandos de utilidades', !off.util, v => R().child('off/util').set(v ? null : true)], ['🔨 Comandos de moderação', !off.mod, v => R().child('off/mod').set(v ? null : true)],
+     ['👋 Mensagem de boas-vindas', (cfg.welcome || {}).on, v => R().child('welcome/on').set(v)], ['🚪 Mensagem de despedida', (cfg.bye || {}).on, v => R().child('bye/on').set(v)],
+     ['🛡 Auto-moderação', (cfg.am || {}).on, v => R().child('am/on').set(v)], ['📈 Níveis e XP', (cfg.xp || {}).on, v => R().child('xp/on').set(v)]]
+      .forEach(([t, v, fn]) => d.append(k.chk(t, v, fn)));
+  },
+  welcome(c, k) {
+    c.append(el('h2', null, 'Boas-vindas e despedida'));
+    [['welcome', '👋 Boas-vindas', 'Bem-vindo(a) {mention} a {server}! Agora somos {count} membros. 🎉'], ['bye', '🚪 Despedida', '{user} saiu de {server}. Até mais!']].forEach(([key, t, ph]) => {
+      const w = cfg[key] || {}, d = k.card(t), l = k.chk('Ativada', w.on), sel = el('select'), tx = el('textarea'); k.chans(sel); sel.value = w.channel || ''; tx.placeholder = ph; tx.value = w.text || '';
+      d.append(l, sel, tx, el('small', null, 'Variáveis: {user} {mention} {server} {count}')); k.save(d, () => R().child(key).set({ on: l.input.checked, channel: sel.value, text: tx.value.slice(0, 500) }));
+    });
+  },
+  cmds(c, k) {
+    c.append(el('h2', null, 'Comandos'));
+    let d = k.card('Prefixo'); const px = k.inp('Prefixo dos comandos (padrão !)', cfg.prefix); px.maxLength = 2; d.append(px); k.save(d, () => R().update({ prefix: px.value.trim() || null }));
+    d = k.card('Comandos do bot'); const p = cfg.prefix || '!';
+    [['🎉 Diversão', 'dado moeda 8ball piada fato escolher abraco ship calc enquete'], ['🛠 Utilidades', 'ping hora servidor perfil ajuda'], ['🔨 Moderação', 'kick ban unban mute unmute avisar limpar'], ['💰 Economia', 'saldo daily trabalhar apostar transferir top loja comprar inventario dar'], ['📈 Níveis', 'nivel rank']]
+      .forEach(([t, l]) => d.append(el('small', null, t + ': ' + l.split(' ').map(x => p + x).join(' '))));
+    d = k.card('Criar comando personalizado'); const cn = k.inp('nome do comando, sem o prefixo (ex.: regras)'), cr = el('textarea'), la = k.chk('Só administradores'), add = el('button', 'btn', 'Criar comando');
+    cr.placeholder = 'Resposta. Variáveis: {user} {server} {count} {channel} {random}'; d.append(cn, cr, la, add);
+    add.onclick = () => {
+      const nm = cn.value.trim().toLowerCase().replace(/[^a-z0-9áàâãéêíóôõúç_-]/g, ''); if (!nm || !cr.value.trim()) return toast('Preencha o nome e a resposta.');
+      if (CB['!' + nm]) return toast('Esse nome já é um comando do bot.'); R().child('cmds').push({ name: nm, reply: cr.value.slice(0, 1000), admin: la.input.checked });
+    };
+    d = k.card('Seus comandos'); const e = Object.entries(cfg.cmds || {}); if (!e.length) d.append(el('small', null, 'Nenhum ainda.'));
+    e.forEach(([id, x]) => k.row(d, p + x.name + (x.admin ? ' 🔒' : '') + ' → ' + x.reply.slice(0, 60), () => R().child('cmds/' + id).remove()));
+  },
+  eco(c, k) {
+    c.append(el('h2', null, 'Economia e loja'));
+    let d = k.card('Configuração'); const cu = k.inp('Símbolo da moeda (ex.: 🪙)', cfg.currency), dl = k.inp('Valor do !daily (padrão 200)', cfg.daily, 'number'), w1 = k.inp('Mínimo do !trabalhar (padrão 50)', cfg.workMin, 'number'), w2 = k.inp('Máximo do !trabalhar (padrão 150)', cfg.workMax, 'number');
+    d.append(cu, dl, w1, w2); k.save(d, () => R().update({ currency: cu.value.trim().slice(0, 8) || null, daily: +dl.value || null, workMin: +w1.value || null, workMax: +w2.value || null }));
+    d = k.card('🛒 Loja'); const sn = k.inp('Nome do item'), sp = k.inp('Preço', '', 'number'), sa = el('button', 'btn', 'Adicionar item'); d.append(sn, sp, sa);
+    sa.onclick = () => { if (!sn.value.trim() || !(+sp.value > 0)) return toast('Informe o nome e um preço maior que 0.'); R().child('shop').push({ name: sn.value.trim().slice(0, 30), price: Math.floor(+sp.value) }); };
+    Object.entries(cfg.shop || {}).forEach(([id, x]) => k.row(d, x.name + ' — ' + money(x.price), () => R().child('shop/' + id).remove()));
+  },
+  mod(c, k) {
+    const a = cfg.am || {}; c.append(el('h2', null, 'Auto-moderação'), el('small', null, 'Bloqueia mensagens que quebram as regras antes de serem enviadas. Dono e administradores não são afetados.'));
+    const d = k.card('Regras'), on_ = k.chk('Auto-moderação ativada', a.on), lk = k.chk('Bloquear links', a.links), cp = k.chk('Bloquear MAIÚSCULAS em excesso', a.caps), sp = k.chk('Bloquear spam (mais de 5 mensagens em 8 s)', a.spam);
+    const wd = el('textarea'), lg = el('select'); wd.placeholder = 'Palavras proibidas, separadas por vírgula'; wd.value = a.words || ''; k.chans(lg); lg.value = a.log || '';
+    d.append(on_, lk, cp, sp, wd, el('small', null, 'Canal para registrar o que foi bloqueado (opcional):'), lg);
+    k.save(d, () => R().child('am').set({ on: on_.input.checked, links: lk.input.checked, caps: cp.input.checked, spam: sp.input.checked, words: wd.value.slice(0, 500), log: lg.value }));
+  },
+  xp(c, k) {
+    const x = cfg.xp || {}; c.append(el('h2', null, 'Níveis e XP'), el('small', null, 'Cada pessoa ganha de 15 a 25 XP por mensagem (no máximo uma vez por minuto). Comandos: !nivel e !rank.'));
+    const d = k.card('Configuração'), on_ = k.chk('Sistema de níveis ativado', x.on), an = k.chk('Avisar no chat quando alguém subir de nível', x.announce !== false);
+    d.append(on_, an); k.save(d, () => R().child('xp').set({ on: on_.input.checked, announce: an.input.checked }));
+  }
+};
 </script>
 </body>
 </html>
