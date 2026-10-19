@@ -136,6 +136,7 @@ textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;p
 #mp button:hover{background:var(--hover)}#mp small{color:var(--mute)}
 .btn.danger{background:var(--red);color:#fff}
 .btn.danger:hover{background:#d0414f}
+.srv img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
 @media(max-width:900px){#app{grid-template-columns:64px 190px 1fr}.mem{display:none}}
 .mob{display:none}
 #scrim{display:none;position:fixed;inset:0;background:#0009;z-index:14}
@@ -264,7 +265,7 @@ const auth = firebase.auth(), db = firebase.database();
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
 const hue = s => { let h = 0; for (const ch of s || '?') h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h},42%,38%)`; };
-const avatar = (u, id) => { const a = u.uid === 'bot_concord' ? botAv() : avatar0(u), i = id || u.uid; if (i && !String(i).startsWith('bot_')) { a.style.cursor = 'pointer'; a.onclick = () => showProfile(i);
+const avatar = (u, id) => { const a = u.bot ? botAv() : avatar0(u), i = id || u.uid; if (i && !u.bot && !String(i).startsWith('bot_')) { a.style.cursor = 'pointer'; a.onclick = () => showProfile(i);
     if (!u.photo) Promise.resolve(getUser(i)).then(x => { if (x && x.photo) { const n = avatar0({ ...u, photo: x.photo }); n.style.cursor = 'pointer'; n.onclick = a.onclick; a.replaceWith(n); } });
   } return a; };
 const avatar0 = u => {
@@ -311,7 +312,7 @@ $('#google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthPr
 $('#logout').onclick = () => { leaveCall(); if (me) db.ref('presence/' + me.uid).remove(); auth.signOut(); };
 
 auth.onAuthStateChanged(u => {
-  if (!u) { me = null; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
+  if (!u) { me = null; checked.clear(); srvInfo = {}; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
   start(u);
 });
 
@@ -349,16 +350,25 @@ async function start(u) {
 
 /* ---------- servidores ---------- */
 function renderRail(list) {
+  lastRailList = list;
   const rail = $('#rail'); rail.replaceChildren();
   const home = el('button', 'srv home' + (curHome ? ' on' : '')); home.onclick = showHome; home.title = 'Concord'; const hi = el('img'); hi.src = document.querySelector('.logo').src; hi.alt = 'Concord'; home.append(hi); rail.append(home, el('div', 'sep'));
   Object.entries(list).forEach(([id, v]) => {
-    const b = el('button', 'srv' + (id === curServer ? ' on' : ''), (v.name || '?')[0].toUpperCase());
+    v = { ...v, ...(srvInfo[id] || {}) };
+    const b = el('button', 'srv' + (id === curServer ? ' on' : ''), v.icon ? null : (v.name || '?')[0].toUpperCase());
+    if (v.icon) { const im = el('img'); im.src = v.icon; im.alt = ''; b.append(im); }
     b.title = v.name; b.onclick = () => selectServer(id, v.name); rail.append(b);
   });
   rail.append(el('div', 'sep'));
   const add = el('button', 'srv add', '＋'); add.title = 'Criar ou entrar em um servidor';
   add.onclick = () => { $('#derr').textContent = ''; $('#dlg').showModal(); }; rail.append(add);
-  Object.keys(list).forEach(id => { if (checked.has(id)) return; checked.add(id); db.ref('servers/' + id + '/name').get().then(x => { if (!x.exists()) db.ref(`users/${me.uid}/servers/${id}`).remove(); }); checkAccess(id); });
+  Object.keys(list).forEach(id => { if (checked.has(id)) return; checked.add(id);
+    on(serverSubs, db.ref('servers/' + id), 'value', x => {
+      if (!x.exists()) { db.ref(`users/${me.uid}/servers/${id}`).remove(); delete srvInfo[id]; return; }
+      const v = x.val(); srvInfo[id] = { name: v.name, icon: v.icon || '' };
+      if (id === curServer) $('#sname').textContent = v.name; renderRail(lastRailList);
+    });
+    checkAccess(id); });
   if (!curServer && !curHome) showHome();
 }
 
@@ -464,12 +474,12 @@ function fill(key) {
 function addMsg(key, m) {
   const list = $('#msgs'), near = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
   const time = new Date(m.ts || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const grouped = lastMsg && lastMsg.uid === m.uid && (m.ts || 0) - lastMsg.ts < 300000;
+  const gk = m.bot ? 'bot:' + m.uid : m.uid, grouped = lastMsg && lastMsg.uid === gk && (m.ts || 0) - lastMsg.ts < 300000;
   const row = el('div', 'm' + (grouped ? '' : ' first'));
   if (grouped) row.append(el('span', 't', time)); else row.append(avatar(m));
   const body = el('div'), txt = el('div', 'txt'), rx = el('div');
   if (!grouped) {
-    const h = el('div'), n = el('span', 'who', m.name); paintName(n, m.c1 || roleColor(m.uid), m.c2);
+    const h = el('div'), n = el('span', 'who', m.name); paintName(n, m.bot ? '' : (m.c1 || roleColor(m.uid)), m.c2);
     h.append(n); if (m.bot) h.append(el('span', 'bottag', 'BOT')); if (m.nitro) h.append(el('span', 'nitro', '✦')); h.append(el('span', 'when', time)); body.append(h);
   }
   body.append(txt, rx); row.append(body);
@@ -480,11 +490,11 @@ function addMsg(key, m) {
     ed.title = 'Editar'; del.title = 'Apagar';
     ed.onclick = () => { const t = prompt('Editar mensagem:', rows[key].m.text); if (t && t.trim()) db.ref(`messages/${curServer}/${curChannel}/${key}`).update({ text: t.trim().slice(0, 4000), edited: true }); };
     del.onclick = () => { if (confirm('Apagar esta mensagem?')) db.ref(`messages/${curServer}/${curChannel}/${key}`).remove(); };
-    if (m.uid === me.uid) tools.append(ed); tools.append(del);
+    if (m.uid === me.uid && !m.bot) tools.append(ed); tools.append(del);
   }
   row.append(tools); list.append(row);
   rows[key] = { row, txt, rx, m }; fill(key);
-  lastMsg = { uid: m.uid, ts: m.ts || 0 };
+  lastMsg = { uid: gk, ts: m.ts || 0 };
   if (near || m.uid === me.uid) list.scrollTop = list.scrollHeight;
 }
 
@@ -865,7 +875,7 @@ document.addEventListener('click', e => { if (!e.target.closest('#mp,#box')) mp.
 const checked = new Set();
 function svGeneral(c) {
   const id = curServer, link = location.origin + location.pathname + '?invite=' + id;
-  c.append(el('h2', null, 'Geral'));
+  c.append(el('h2', null, 'Geral')); if (isOwner()) svIdentity(c);
   const inv = el('div', 'card2'), lk = el('small', null, link), cp = el('button', 'btn ghost', 'Copiar link de convite');
   lk.style.overflowWrap = 'anywhere'; cp.onclick = () => { navigator.clipboard?.writeText(link); toast('Link copiado!'); };
   inv.append(el('h3', null, 'Convite'), lk, cp); c.append(inv);
@@ -892,7 +902,7 @@ async function leaveServer(id) {
 /* ---------- ConcordBot: diversão, utilidades e moderação ---------- */
 let bans = {}, mutes = {};
 function botAv() { const i = el('img', 'av'); i.src = document.querySelector('.logo').src; i.alt = ''; return i; }
-const say = t => db.ref(`messages/${curServer}/${curChannel}`).push({ uid: 'bot_concord', name: 'ConcordBot', photo: '', bot: true, text: String(t).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
+const say = t => db.ref(`messages/${curServer}/${curChannel}`).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: String(t).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const findMember = tok => { const t = (tok || '').replace(/^@/, '').replace(/[.,!?;:]+$/, '').toLowerCase(); return Object.entries(members).find(([, u]) => u.name.replace(/\s+/g, '').toLowerCase() === t); };
 const JOKES = ['Por que o programador confunde Halloween com Natal? Porque 31 OCT = 25 DEC.', 'O que o zero disse pro oito? Belo cinto!', 'Qual é o cúmulo da rapidez? Fechar o zíper de uma cueca saindo do banho.', 'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.', 'O que o tomate foi fazer no banco? Tirar extrato.'];
@@ -936,7 +946,8 @@ const CB = {
 async function concordBot(text) {
   if (text[0] !== '!') return;
   const [c, ...a] = text.trim().split(/\s+/), f = CB[c.toLowerCase()]; if (!f) return;
-  try { const r = await f(a, a.join(' ')); if (r) say(r); } catch (e) { say('⚠️ Não consegui executar: ' + e.message); }
+  try { const r = await f(a, a.join(' ')); if (r) await say(r); }
+  catch (e) { toast('ConcordBot: ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
 async function forceLeave(id, why) {
   await db.ref().update({ [`members/${id}/${me.uid}`]: null, [`users/${me.uid}/servers/${id}`]: null });
@@ -988,6 +999,37 @@ $('#s-file').onchange = e => {
 };
 $('#s-rm').onclick = () => { pendingPhoto = ''; $('#s-photo').value = ''; setPrev(''); };
 $('#s-photo').addEventListener('input', e => { pendingPhoto = null; const v = e.target.value.trim(); if (/^https?:\/\//.test(v)) setPrev(v); });
+
+/* ---------- nome e ícone do servidor ---------- */
+let srvInfo = {}, lastRailList = {}, pendingIcon = null;
+function resizeImg(f, z, cb) {
+  if (!f) return; if (!f.type.startsWith('image/')) return toast('Escolha um arquivo de imagem.');
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const c = document.createElement('canvas'), r = Math.min(img.width, img.height); c.width = c.height = z;
+    c.getContext('2d').drawImage(img, (img.width - r) / 2, (img.height - r) / 2, r, r, 0, 0, z, z); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg', .85));
+  };
+  img.onerror = () => toast('Não consegui abrir essa imagem.'); img.src = url;
+}
+function svIdentity(c) {
+  const f = el('div', 'card2'), nm = el('input'), prev = el('span'), row = el('div', 'row'), lb = el('label', 'btn ghost', '📷 Escolher ícone'), fi = el('input'), rm = el('button', 'btn ghost', 'Remover'), ok = el('button', 'btn', 'Salvar alterações');
+  pendingIcon = null; nm.value = $('#sname').textContent; nm.maxLength = 40; nm.placeholder = 'Nome do servidor';
+  const show = p => {
+    const a = p ? el('img', 'av') : el('div', 'av', (nm.value || '?')[0].toUpperCase());
+    if (p) a.src = p; else { a.style.background = 'var(--green)'; a.style.color = 'var(--ink)'; }
+    a.style.width = a.style.height = '64px'; a.style.borderRadius = '18px'; a.style.fontSize = '26px'; prev.replaceChildren(a);
+  };
+  show((srvInfo[curServer] || {}).icon || '');
+  fi.type = 'file'; fi.accept = 'image/*'; fi.hidden = true; lb.append(fi); lb.style.cursor = 'pointer'; rm.type = 'button';
+  fi.onchange = () => { const file = fi.files[0]; fi.value = ''; resizeImg(file, 128, d => { pendingIcon = d; show(d); }); };
+  rm.onclick = () => { pendingIcon = ''; show(''); };
+  ok.onclick = async () => {
+    const name = nm.value.trim(); if (!name) return toast('O servidor precisa de um nome.');
+    const upd = { name }; if (pendingIcon !== null) upd.icon = pendingIcon || null;
+    try { await db.ref('servers/' + curServer).update(upd); pendingIcon = null; toast('Servidor atualizado!'); } catch (e) { toast('Erro: ' + e.message); }
+  };
+  row.append(prev, lb, rm); f.append(el('h3', null, 'Nome e ícone do servidor'), row, nm, ok); c.append(f);
+}
 </script>
 </body>
 </html>
