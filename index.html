@@ -392,7 +392,7 @@ $('#jn').onclick = async () => {
     const upd = {};
     upd[`members/${id}/${me.uid}`] = { name: me.name, photo: pubPhoto() };
     upd[`users/${me.uid}/servers/${id}`] = { name: s.val() };
-    await db.ref().update(upd); $('#code').value = ''; $('#dlg').close(); selectServer(id, s.val());
+    await db.ref().update(upd); $('#code').value = ''; $('#dlg').close(); selectServer(id, s.val()); botEvent(id, 'welcome', s.val());
   } catch (e) { $('#derr').textContent = 'Erro ao entrar: ' + e.message; }
 };
 $('#invite').onclick = () => {
@@ -406,13 +406,14 @@ function selectServer(id, name) {
   clear(chanSubs); curServer = id; curChannel = null; curHome = false; $('#invite').hidden = false;
   document.querySelectorAll('.srv').forEach(b => b.classList.toggle('on', b.title === name));
   $('#sname').textContent = name; $('#addch').hidden = false;
-  roles = {}; mroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {};
+  roles = {}; mroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {}; cfg = {};
   db.ref('servers/' + id + '/owner').get().then(s => { serverOwner = s.val(); calcPerms(); });
   const subs = chanSubs;
   on(subs, db.ref('channels/' + id), 'value', s => { if (id !== curServer) return; curChans = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); svRefresh(); });
   on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
   on(subs, db.ref('bots/' + id), 'value', s => { bots = s.val() || {}; svRefresh(); });
+  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); });
   on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
   on(subs, db.ref('mutes/' + id), 'value', s => { mutes = s.val() || {}; });
   on(subs, db.ref(`kicks/${id}/${me.uid}`), 'value', s => { if (s.exists()) { db.ref(`kicks/${id}/${me.uid}`).remove(); forceLeave(id, 'expulso'); } });
@@ -567,7 +568,7 @@ async function joinServer(id) {
   if (!n.exists()) return toast('Convite inválido ou expirado.');
   if ((await db.ref(`bans/${id}/${me.uid}`).get()).exists()) return toast('Você foi banido deste servidor.');
   await db.ref().update({ [`members/${id}/${me.uid}`]: { name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2 }, [`users/${me.uid}/servers/${id}`]: { name: n.val() } });
-  selectServer(id, n.val()); toast('Você entrou em ' + n.val());
+  selectServer(id, n.val()); toast('Você entrou em ' + n.val()); botEvent(id, 'welcome', n.val());
 }
 function showHome() {
   if (innerWidth <= 700) document.body.classList.add('nav-open');
@@ -754,10 +755,10 @@ $('#svx').onclick = () => $('#sv').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sv').hidden = true; });
 function renderSV() {
   const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
-  const tabs = [['general', 'Geral', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots', isOwner()]].filter(t => t[2]);
+  const tabs = [['general', 'Geral', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots', isOwner()], ['bot', '🤖 ConcordBot', isOwner()]].filter(t => t[2]);
   if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
   tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { svTab = k; editCh = null; renderSV(); }; n.append(b); });
-  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots })[svTab](c);
+  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots, bot: svBot })[svTab](c);
 }
 function roleChecks(title, sel) {
   const box = el('div'), row = el('div', 'chk'), set = { ...(sel || {}) }; box.append(el('small', null, title));
@@ -895,6 +896,7 @@ async function deleteServer(id) {
 }
 async function leaveServer(id) {
   if (!confirm('Sair de ' + $('#sname').textContent + '?')) return;
+  await botEvent(id, 'bye', $('#sname').textContent);
   await db.ref().update({ [`members/${id}/${me.uid}`]: null, [`users/${me.uid}/servers/${id}`]: null });
   showHome(); toast('Você saiu do servidor.');
 }
@@ -944,8 +946,9 @@ const CB = {
   }
 };
 async function concordBot(text) {
-  if (text[0] !== '!') return;
-  const [c, ...a] = text.trim().split(/\s+/), f = CB[c.toLowerCase()]; if (!f) return;
+  const px = cfg.prefix || '!'; if (!text.startsWith(px)) return; text = '!' + text.slice(px.length);
+  const [c, ...a] = text.trim().split(/\s+/), cmd = c.toLowerCase(), cu = Object.values(cfg.cmds || {}).find(x => '!' + x.name === cmd);
+  const f = cu ? () => (cu.admin && !can('admin') ? '⛔ Só administradores podem usar este comando.' : fillVars(cu.reply)) : CB[cmd]; if (!f) return;
   try { const r = await f(a, a.join(' ')); if (r) await say(r); }
   catch (e) { toast('ConcordBot: ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
@@ -1029,6 +1032,104 @@ function svIdentity(c) {
     try { await db.ref('servers/' + curServer).update(upd); pendingIcon = null; toast('Servidor atualizado!'); } catch (e) { toast('Erro: ' + e.message); }
   };
   row.append(prev, lb, rm); f.append(el('h3', null, 'Nome e ícone do servidor'), row, nm, ok); c.append(f);
+}
+
+/* ---------- ConcordBot: economia, boas-vindas e painel ---------- */
+let cfg = {};
+const fillVars = (t, o = {}) => String(t).replace(/\{user\}/g, o.user || me.name).replace(/\{mention\}/g, '@' + (o.user || me.name).replace(/\s+/g, ''))
+  .replace(/\{server\}/g, o.server || $('#sname').textContent).replace(/\{(members|membros|count)\}/g, o.count ?? Object.keys(members).length)
+  .replace(/\{(channel|canal)\}/g, (curChans[curChannel] || {}).name || '').replace(/\{random\}/g, 1 + Math.floor(Math.random() * 100));
+async function botEvent(id, kind, name) {
+  try {
+    const cf = (await db.ref('botcfg/' + id).get()).val() || {}, w = cf[kind]; if (!w || !w.on || !w.channel || !w.text) return;
+    const cnt = Object.keys((await db.ref('members/' + id).get()).val() || {}).length;
+    await db.ref(`messages/${id}/${w.channel}`).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: fillVars(w.text, { user: me.name, server: name, count: cnt }).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
+  } catch (e) {}
+}
+const ECO = () => !curServer || curServer === 'dm' ? '⛔ A economia só funciona em servidores.' : cfg.eco === false ? '⛔ A economia está desativada neste servidor.' : null;
+const E = fn => async (a, r) => ECO() || fn(a, r);
+const money = n => (cfg.currency || '🪙') + ' ' + Number(n).toLocaleString('pt-BR');
+const ecoRef = id => db.ref(`economy/${curServer}/${id}`);
+const getBal = async id => (await ecoRef(id).child('bal').get()).val() || 0;
+const addBal = async (id, d) => { const r = await ecoRef(id).child('bal').transaction(v => { const n = (v || 0) + d; return n < 0 ? undefined : n; }); return r.committed ? r.snapshot.val() : null; };
+const num = a => Math.floor(+a.find(x => /^\d+$/.test(x)) || 0);
+const cool = async (key, ms) => { const r = ecoRef(me.uid).child(key), left = ((await r.get()).val() || 0) + ms - Date.now(); if (left > 0) return left; await r.set(Date.now()); return 0; };
+const fmtWait = ms => { const m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'min' : m + ' min'; };
+const JOBS = ['programou um site', 'entregou pizzas', 'passeou com cachorros', 'consertou computadores', 'vendeu limonada', 'editou vídeos', 'deu aulas particulares'];
+Object.assign(CB, {
+  '!saldo': E(async a => { const m = findMember(a[0]) || [me.uid, { name: me.name }]; return `👛 ${m[1].name}: ${money(await getBal(m[0]))}`; }),
+  '!daily': E(async () => {
+    const left = await cool('daily', 864e5); if (left) return `⏳ Você já resgatou hoje. Volte em ${fmtWait(left)}.`;
+    const v = cfg.daily || 200, b = await addBal(me.uid, v); return `🎁 ${me.name} resgatou ${money(v)}! Saldo: ${money(b)}`;
+  }),
+  '!trabalhar': E(async () => {
+    const left = await cool('work', 36e5); if (left) return `⏳ Você está cansado. Volte em ${fmtWait(left)}.`;
+    const lo = cfg.workMin || 50, hi = Math.max(lo, cfg.workMax || 150), v = lo + Math.floor(Math.random() * (hi - lo + 1)), b = await addBal(me.uid, v);
+    return `💼 ${me.name} ${pick(JOBS)} e ganhou ${money(v)}. Saldo: ${money(b)}`;
+  }),
+  '!apostar': E(async a => {
+    const n = num(a); if (!n) return 'Use: !apostar 100'; const b = await addBal(me.uid, -n); if (b === null) return '❌ Saldo insuficiente.';
+    if (Math.random() < .48) return `🎰 Você ganhou ${money(n)}! Saldo: ${money(await addBal(me.uid, n * 2))}`;
+    return `🎰 Você perdeu ${money(n)}. Saldo: ${money(b)}`;
+  }),
+  '!transferir': E(async a => {
+    const m = a.map(x => findMember(x)).find(Boolean), n = num(a); if (!m || !n) return 'Use: !transferir @pessoa 100'; if (m[0] === me.uid) return '⛔ Você não pode transferir para si mesmo.';
+    if (await addBal(me.uid, -n) === null) return '❌ Saldo insuficiente.'; await addBal(m[0], n); return `💸 ${me.name} enviou ${money(n)} para ${m[1].name}.`;
+  }),
+  '!dar': E(async a => {
+    if (!can('admin')) return '⛔ Só administradores podem dar dinheiro.'; const m = a.map(x => findMember(x)).find(Boolean), n = num(a); if (!m || !n) return 'Use: !dar @pessoa 100';
+    await addBal(m[0], n); return `💰 ${m[1].name} recebeu ${money(n)}.`;
+  }),
+  '!top': E(async () => {
+    const v = (await db.ref('economy/' + curServer).get()).val() || {}, t = Object.entries(v).map(([id, x]) => [id, x.bal || 0]).sort((x, y) => y[1] - x[1]).slice(0, 5);
+    return t.length ? '🏆 Mais ricos:\n' + t.map(([id, b], i) => `${['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i]} ${(members[id] || {}).name || '?'} — ${money(b)}`).join('\n') : 'Ninguém tem dinheiro ainda. Use !daily!';
+  }),
+  '!loja': E(async () => { const it = Object.values(cfg.shop || {}); return it.length ? '🛒 Loja:\n' + it.map(i => `• ${i.name} — ${money(i.price)}`).join('\n') + '\nCompre com !comprar nome' : '🛒 A loja está vazia. O dono adiciona itens em ⚙ > ConcordBot.'; }),
+  '!comprar': E(async (a, r) => {
+    const q = r.toLowerCase(), it = Object.entries(cfg.shop || {}).find(([, i]) => i.name.toLowerCase() === q) || Object.entries(cfg.shop || {}).find(([, i]) => i.name.toLowerCase().includes(q));
+    if (!q || !it) return 'Item não encontrado. Veja a !loja.'; const b = await addBal(me.uid, -it[1].price); if (b === null) return '❌ Saldo insuficiente.';
+    await ecoRef(me.uid).child('inv/' + it[0]).transaction(v => (v || 0) + 1); return `🛍 ${me.name} comprou ${it[1].name}! Saldo: ${money(b)}`;
+  }),
+  '!inventario': E(async () => {
+    const v = (await ecoRef(me.uid).child('inv').get()).val() || {}, l = Object.entries(v).map(([id, n]) => `• ${((cfg.shop || {})[id] || { name: '(item removido)' }).name} x${n}`);
+    return l.length ? `🎒 Inventário de ${me.name}:\n` + l.join('\n') : '🎒 Seu inventário está vazio. Veja a !loja.';
+  })
+});
+const _help = CB['!ajuda'];
+CB['!ajuda'] = () => {
+  const px = cfg.prefix || '!', cu = Object.values(cfg.cmds || {}).map(x => '!' + x.name).join(' ');
+  return (_help() + (cfg.eco === false ? '' : '\n💰 Economia: !saldo !daily !trabalhar !apostar N !transferir @p N !top !loja !comprar item !inventario !dar @p N') + (cu ? '\n⭐ Personalizados: ' + cu : '')).replace(/!/g, px);
+};
+
+/* painel do ConcordBot (aba em ⚙ do servidor) */
+function svBot(c) {
+  const R = () => db.ref('botcfg/' + curServer);
+  const card = t => { const d = el('div', 'card2'); d.append(el('h3', null, t)); c.append(d); return d; };
+  const inp = (ph, v, type) => { const i = el('input'); i.placeholder = ph; i.value = v ?? ''; if (type) i.type = type; return i; };
+  const chk = (t, v) => { const l = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; i.checked = !!v; l.append(i, el('span', null, t)); return [l, i]; };
+  const save = (d, fn) => { const b = el('button', 'btn', 'Salvar'); b.onclick = async () => { try { await fn(); toast('Salvo!'); } catch (e) { toast('Erro: ' + e.message); } }; d.append(b); };
+  const row = (d, txt, fn) => { const r = el('div', 'row'), t = el('span', null, txt), x = el('button', 'icon', '🗑'); t.style.flex = 1; x.onclick = fn; r.append(t, x); d.append(r); };
+  c.append(el('h2', null, '🤖 Painel do ConcordBot'));
+  let d = card('Geral'); const px = inp('Prefixo dos comandos (padrão !)', cfg.prefix); px.maxLength = 2; const [l1, eco] = chk('Economia ativada', cfg.eco !== false); d.append(px, l1);
+  save(d, () => R().update({ prefix: px.value.trim() || null, eco: eco.checked }));
+  [['welcome', '👋 Boas-vindas', 'Bem-vindo(a) {mention} a {server}! Agora somos {count} membros. 🎉'], ['bye', '🚪 Despedida', '{user} saiu de {server}. Até mais!']].forEach(([k, t, ph]) => {
+    const w = cfg[k] || {}; d = card(t); const [l, act] = chk('Ativada', w.on), sel = el('select'), tx = el('textarea'), none = el('option', null, '— escolha o canal —'); none.value = ''; sel.append(none);
+    Object.entries(curChans).filter(([, x]) => x.type !== 'voice').forEach(([id, x]) => { const o = el('option', null, '# ' + x.name); o.value = id; sel.append(o); });
+    sel.value = w.channel || ''; tx.placeholder = ph; tx.value = w.text || ''; d.append(l, sel, tx, el('small', null, 'Variáveis: {user} {mention} {server} {count}'));
+    save(d, () => R().child(k).set({ on: act.checked, channel: sel.value, text: tx.value.slice(0, 500) }));
+  });
+  d = card('Comandos personalizados'); const cn = inp('nome do comando, sem o prefixo (ex.: regras)'), cr = el('textarea'), [l2, adm] = chk('Só administradores'), add = el('button', 'btn', 'Criar comando');
+  cr.placeholder = 'Resposta. Variáveis: {user} {server} {count} {channel} {random}'; d.append(cn, cr, l2, add);
+  add.onclick = () => {
+    const n = cn.value.trim().toLowerCase().replace(/[^a-z0-9áàâãéêíóôõúç_-]/g, ''); if (!n || !cr.value.trim()) return toast('Preencha o nome e a resposta.');
+    if (CB['!' + n]) return toast('Esse nome já é um comando do bot.'); R().child('cmds').push({ name: n, reply: cr.value.slice(0, 1000), admin: adm.checked });
+  };
+  Object.entries(cfg.cmds || {}).forEach(([id, x]) => row(d, (cfg.prefix || '!') + x.name + (x.admin ? ' 🔒' : '') + ' → ' + x.reply.slice(0, 50), () => R().child('cmds/' + id).remove()));
+  d = card('💰 Economia'); const cu = inp('Símbolo da moeda (ex.: 🪙)', cfg.currency), dl = inp('Valor do !daily (padrão 200)', cfg.daily, 'number'), w1 = inp('Mínimo do !trabalhar (padrão 50)', cfg.workMin, 'number'), w2 = inp('Máximo do !trabalhar (padrão 150)', cfg.workMax, 'number');
+  d.append(cu, dl, w1, w2); save(d, () => R().update({ currency: cu.value.trim().slice(0, 8) || null, daily: +dl.value || null, workMin: +w1.value || null, workMax: +w2.value || null }));
+  d = card('🛒 Loja'); const sn = inp('Nome do item'), sp = inp('Preço', '', 'number'), sa = el('button', 'btn', 'Adicionar item'); d.append(sn, sp, sa);
+  sa.onclick = () => { if (!sn.value.trim() || !(+sp.value > 0)) return toast('Informe o nome e um preço maior que 0.'); R().child('shop').push({ name: sn.value.trim().slice(0, 30), price: Math.floor(+sp.value) }); };
+  Object.entries(cfg.shop || {}).forEach(([id, x]) => row(d, x.name + ' — ' + money(x.price), () => R().child('shop/' + id).remove()));
 }
 </script>
 </body>
