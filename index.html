@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concord</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<style>
+:root{--rail:#0d1411;--side:#131b17;--main:#18221d;--hover:#1f2c26;--line:#24332b;--text:#e4efe8;--mute:#8fa59a;--green:#73cb27;--green-d:#5fb01c;--ink:#10250a;--red:#ed5565}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--main);color:var(--text);font-size:15px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.btn{background:var(--green);color:var(--ink);font-weight:600;padding:10px 16px;border-radius:6px}
+.btn:hover{background:var(--green-d)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--hover)}
+input{background:var(--rail);border:1px solid var(--line);border-radius:6px;padding:10px 12px;width:100%}
+input:focus{outline:2px solid var(--green);border-color:transparent}
+#auth{min-height:100%;display:grid;place-items:center;padding:20px;background:radial-gradient(900px 500px at 50% -10%,#2c4a17,var(--rail))}
+.card{background:var(--side);border:1px solid var(--line);border-radius:12px;padding:32px;width:100%;max-width:400px;display:grid;gap:12px}
+.card h1{font-size:28px;text-align:center}
+.card p{color:var(--mute);text-align:center;margin-bottom:6px}
+.logo{width:64px;height:64px;border-radius:18px;display:block;margin:0 auto 4px}
+.srv.home{padding:0;overflow:hidden;background:var(--green)}
+.srv.home img{width:100%;height:100%;display:block}
+.err{color:var(--red);font-size:13px;min-height:16px;text-align:center}
+#app{display:grid;grid-template-columns:72px 240px 1fr 220px;height:100%}
+.rail{background:var(--rail);padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:8px;overflow-y:auto}
+.srv{width:48px;height:48px;border-radius:24px;background:var(--side);color:var(--text);font-weight:700;font-size:18px;transition:border-radius .15s,background .15s;position:relative}
+.srv:hover,.srv.on{border-radius:16px;background:var(--green);color:var(--ink)}
+.srv.on::before{content:"";position:absolute;left:-12px;top:12px;width:4px;height:24px;border-radius:0 4px 4px 0;background:var(--text)}
+.srv.add{color:var(--green);font-size:24px}
+.sep{width:32px;height:2px;background:var(--line);border-radius:2px}
+.side{background:var(--side);display:flex;flex-direction:column;min-width:0}
+.head{height:48px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);font-weight:700;gap:8px}
+.head span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon{background:transparent;color:var(--mute);font-size:20px;padding:2px 8px;border-radius:4px}
+.icon:hover{color:var(--text);background:var(--hover)}
+#chans{flex:1;overflow-y:auto;padding:8px}
+.ch{display:block;width:100%;text-align:left;padding:7px 10px;border-radius:6px;background:transparent;color:var(--mute)}
+.ch:hover{background:var(--hover);color:var(--text)}
+.ch.on{background:var(--hover);color:var(--text);font-weight:600}
+.me{height:54px;padding:0 10px;display:flex;align-items:center;gap:10px;background:var(--rail)}
+.me b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.av{width:36px;height:36px;border-radius:50%;object-fit:cover;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.me .av{width:32px;height:32px;font-size:13px}
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0}
+#msgs{flex:1;overflow-y:auto;padding:12px 0}
+.empty{color:var(--mute);text-align:center;padding:60px 20px}
+.m{display:grid;grid-template-columns:52px 1fr;padding:2px 16px}
+.m:hover{background:#1b2721}
+.m.first{margin-top:14px}
+.m .t{font-size:11px;color:var(--mute);align-self:center;opacity:0}
+.m:hover .t{opacity:1}
+.m .t,.m .av{justify-self:start}
+.who{font-weight:600;margin-right:8px}
+.when{font-size:12px;color:var(--mute)}
+.txt{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.compose{padding:0 16px 20px}
+.compose input{padding:13px 14px;background:var(--hover);border-color:transparent}
+.mem{background:var(--side);overflow-y:auto;padding:12px 8px}
+.mem h4{font-size:12px;color:var(--mute);padding:6px 8px;font-weight:600}
+.u{display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:6px}
+.u:hover{background:var(--hover)}
+.u .av{width:30px;height:30px;font-size:12px;position:relative}
+.u.off{opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.u.off .dot{background:var(--mute)}
+dialog{margin:auto;background:var(--side);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:24px;width:min(420px,92vw)}
+dialog::backdrop{background:#000a}
+dialog form{display:grid;gap:10px}
+dialog h3{margin-top:6px}
+dialog small{color:var(--mute)}
+a{color:#8fd96a}
+select{background:var(--rail);border:1px solid var(--line);border-radius:6px;padding:10px;color:var(--text)}
+input[type=color]{padding:2px;height:40px;width:64px}input[type=checkbox]{width:auto}
+.row{display:flex;gap:10px;align-items:center}
+.m{position:relative}
+.tools{position:absolute;right:16px;top:-14px;background:var(--side);border:1px solid var(--line);border-radius:6px;display:none;padding:2px;z-index:2}
+.m:hover .tools{display:flex}
+.tools button{background:none;padding:3px 6px;border-radius:4px;font-size:14px}.tools button:hover{background:var(--hover)}
+.rx{display:inline-flex;background:var(--hover);border:1px solid var(--line);border-radius:8px;padding:2px 8px;margin:4px 4px 0 0;font-size:13px}
+.rx.on{border-color:var(--green);background:#223319}
+.edited{font-size:11px;color:var(--mute)}
+.mention{background:#2d4a1a;color:#bfe89a;border-radius:3px;padding:0 2px}
+.m.ping{background:#2a3318;box-shadow:inset 3px 0 var(--green)}
+.embed{display:block;max-width:min(320px,100%);max-height:260px;border-radius:8px;margin-top:6px}
+.nitro{background:linear-gradient(135deg,#ff73fa,#7a6cff);-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:8px;font-size:13px}
+.cwrap{position:relative;display:flex;align-items:center;background:var(--hover);border-radius:8px}
+.cwrap input{background:transparent;border:0}
+#picker{position:absolute;bottom:52px;right:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:8px;display:grid;grid-template-columns:repeat(8,1fr);gap:2px;width:290px;z-index:5}
+#picker button{background:none;font-size:20px;border-radius:4px;padding:3px}#picker button:hover{background:var(--hover)}
+#typing{height:18px;font-size:12px;color:var(--mute);padding:4px 4px 0}
+.wrap{position:relative;display:inline-flex}
+.wrap .dot{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border:2px solid var(--side)}
+.dot.idle{background:#f0b232}.dot.dnd{background:var(--red)}
+#call{background:var(--rail);border-bottom:1px solid var(--line);padding:10px}
+#grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tile{position:relative;width:220px;height:140px;background:var(--side);border-radius:10px;overflow:hidden}
+.tile video{width:100%;height:100%;object-fit:cover;background:#0006}
+.tile span{position:absolute;left:8px;bottom:6px;font-size:12px;background:#000a;padding:1px 6px;border-radius:4px}
+.ctl{display:flex;justify-content:center;gap:8px;margin-top:8px}
+.ctl button{background:var(--hover);border-radius:50%;width:42px;height:42px;font-size:18px}
+.ctl .off{background:var(--red)}.ctl .on{background:var(--green)}
+.toast{position:fixed;right:16px;bottom:16px;background:var(--side);border:1px solid var(--green);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;z-index:20}
+#flist h4{font-size:12px;color:var(--mute);padding:10px 8px 4px;font-weight:600}
+.dot.off{background:var(--mute)}
+.ch.vc::before{content:"";}
+#pf{padding:0;overflow:hidden}
+.pban{height:84px}
+.pinfo{padding:0 20px;margin-top:-38px}
+.av.big{width:76px;height:76px;font-size:30px;border:5px solid var(--side)}
+.pinfo h3{margin:8px 0 2px;font-size:20px}
+.pbio{background:var(--rail);border-radius:8px;padding:10px;margin:12px 0 6px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.pact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#pf form{padding:4px 20px 20px}
+#sv{position:fixed;inset:0;background:var(--main);z-index:30;display:grid;grid-template-columns:220px 1fr;overflow:hidden}
+.svn{background:var(--side);padding:24px 12px;display:flex;flex-direction:column;gap:4px}
+.svn h4{color:var(--mute);font-size:12px;padding:0 12px 8px}
+.svn button{text-align:left;padding:8px 12px;border-radius:6px;background:none;color:var(--mute)}
+.svn button.on,.svn button:hover{background:var(--hover);color:var(--text)}
+.svc{overflow-y:auto;padding:32px 40px;max-width:780px}
+.svx{position:fixed;top:14px;right:20px;font-size:24px}
+.card2{background:var(--side);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0;display:grid;gap:10px}
+.chk{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;padding:10px 12px;width:100%;min-height:90px;font:inherit;color:inherit}
+.bottag{background:var(--green);color:var(--ink);font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-right:6px}
+@media(max-width:700px){#sv{grid-template-columns:1fr;grid-template-rows:auto 1fr}.svn{flex-direction:row;overflow-x:auto;padding:12px 56px 12px 12px}.svn h4{display:none}.svc{padding:16px}}
+#mp{position:absolute;bottom:52px;left:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:240px;max-height:220px;overflow-y:auto;z-index:5}
+#mp button{display:flex;justify-content:space-between;gap:16px;width:100%;text-align:left;background:none;padding:6px 10px;border-radius:4px}
+#mp button:hover{background:var(--hover)}#mp small{color:var(--mute)}
+.btn.danger{background:var(--red);color:#fff}
+.btn.danger:hover{background:#d0414f}
+@media(max-width:900px){#app{grid-template-columns:64px 190px 1fr}.mem{display:none}}
+@media(max-width:560px){#app{grid-template-columns:60px 1fr}.side{display:none}.rail{flex-direction:row;overflow-x:auto;overflow-y:hidden;height:60px;padding:6px}#app{grid-template-rows:60px 1fr}}
+</style>
+</head>
+<body>
+
+<div id="auth">
+  <div class="card">
+    <img class="logo" src="data:image/png;base64,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" alt="Concord">
+    <h1>Concord</h1>
+    <p>Converse com sua comunidade em tempo real.</p>
+    <input id="email" type="email" placeholder="E-mail" autocomplete="email">
+    <input id="pass" type="password" placeholder="Senha (mínimo 6 caracteres)" autocomplete="current-password">
+    <div class="err" id="err"></div>
+    <button class="btn" id="login">Entrar</button>
+    <button class="btn ghost" id="signup">Criar conta</button>
+    <button class="btn ghost" id="google">Continuar com Google</button>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <nav class="rail" id="rail"></nav>
+  <aside class="side">
+    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
+    <div id="chans"></div>
+    <div class="me"><div id="meav"></div><b id="mename"></b><button class="icon" id="settings" title="Configurações">⚙</button><button class="icon" id="logout" title="Sair">⏻</button></div>
+  </aside>
+  <main class="chat">
+    <div class="head"><span id="cname"># selecione um servidor</span><button class="icon" id="addch" title="Novo canal" hidden>＋</button></div>
+    <div id="call" hidden><div id="grid"></div><div class="ctl"><button id="bmic" title="Microfone">🎤</button><button id="bdeaf" title="Ensurdecer">🎧</button><button id="bcam" title="Câmera">📷</button><button id="bscr" title="Compartilhar tela">🖥</button><button id="bend" class="off" title="Sair da call">📞</button></div></div>
+    <div id="msgs"><div class="empty">Crie um servidor ou entre em um com um código de convite.</div></div>
+    <div class="compose"><div class="cwrap"><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><div id="picker" hidden></div></div><div id="typing"></div></div>
+  </main>
+  <aside class="mem" id="mem"></aside>
+</div>
+
+<dialog id="dlg">
+  <form method="dialog" id="f1">
+    <h3>Criar servidor</h3>
+    <input id="newname" placeholder="Nome do servidor" maxlength="40">
+    <button class="btn" id="mk" type="button">Criar</button>
+    <h3>Entrar com convite</h3>
+    <input id="code" placeholder="Código de convite">
+    <button class="btn ghost" id="jn" type="button">Entrar</button>
+    <small id="derr"></small>
+    <button class="btn ghost">Fechar</button>
+  </form>
+</dialog>
+
+<div id="sv" hidden><nav class="svn" id="svn"></nav><div class="svc" id="svc"></div><button class="icon svx" id="svx" title="Fechar">✕</button></div>
+
+<dialog id="pf"><div id="pf-body"></div><form method="dialog"><button class="btn ghost">Fechar</button></form></dialog>
+
+<dialog id="st">
+  <form method="dialog">
+    <h3>Minha conta</h3>
+    <input id="s-name" placeholder="Nome de usuário" maxlength="32">
+    <input id="s-photo" placeholder="URL da foto de perfil (https://…)">
+    <input id="s-bio" placeholder="Sobre mim (descrição)" maxlength="190">
+    <select id="s-status"><option value="online">Online</option><option value="idle">Ausente</option><option value="dnd">Não perturbe</option></select>
+    <h3><span class="nitro">✦</span>Concord Nitro (grátis)</h3>
+    <small>Nitro ativo: selo ✦, nome com cor ou degradê, mensagens de até 4000 caracteres e imagens/GIFs por link.</small>
+    <label class="row"><input type="checkbox" id="s-use"> Usar cor no meu nome</label>
+    <div class="row"><input id="s-c1" type="color" value="#73cb27"><input id="s-c2" type="color" value="#2fa8ff"><small>cor inicial e final (degradê)</small></div>
+    <button class="btn" id="s-save" type="button">Salvar</button>
+    <button class="btn ghost">Fechar</button>
+  </form>
+</dialog>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBJsPaZOArWDvpzEz5sPCxBaJe_Yf7eoTg",
+  authDomain: "concord-cdc9c.firebaseapp.com",
+  databaseURL: "https://concord-cdc9c-default-rtdb.firebaseio.com",
+  projectId: "concord-cdc9c",
+  storageBucket: "concord-cdc9c.firebasestorage.app",
+  messagingSenderId: "663376374883",
+  appId: "1:663376374883:web:7f55fe6f4bec11bea09c56",
+  measurementId: "G-VS3HXS02CT"
+};
+firebase.initializeApp(firebaseConfig);
+try { firebase.analytics(); } catch (e) {}
+const auth = firebase.auth(), db = firebase.database();
+
+const $ = s => document.querySelector(s);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+const hue = s => { let h = 0; for (const ch of s || '?') h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h},42%,38%)`; };
+const avatar = (u, id) => { const a = u.uid === 'bot_concord' ? botAv() : avatar0(u), i = id || u.uid; if (i && !String(i).startsWith('bot_')) { a.style.cursor = 'pointer'; a.onclick = () => showProfile(i); } return a; };
+const avatar0 = u => {
+  if (u.photo) { const i = el('img', 'av'); i.src = u.photo; i.referrerPolicy = 'no-referrer'; i.alt = ''; return i; }
+  const d = el('div', 'av', (u.name || '?')[0].toUpperCase()); d.style.background = hue(u.name); return d;
+};
+
+let me, curServer = null, curChannel = null, serverSubs = [], chanSubs = [], lastMsg = null;
+let presence = {}, members = {}, serverOwner = null;
+const on = (arr, ref, ev, fn) => { ref.on(ev, fn); arr.push(() => ref.off(ev, fn)); };
+const clear = arr => { arr.forEach(f => f()); arr.length = 0; };
+
+/* ---------- autenticação ---------- */
+const errBox = m => $('#err').textContent = m;
+const msgErr = e => ({
+  'auth/invalid-email': 'E-mail inválido.', 'auth/missing-password': 'Digite a senha.',
+  'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+  'auth/email-already-in-use': 'Este e-mail já tem uma conta. Use Entrar.',
+  'auth/invalid-credential': 'E-mail ou senha incorretos, ou a conta não existe.',
+  'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco e tente de novo.',
+  'auth/network-request-failed': 'Sem conexão. Verifique sua internet.',
+  'auth/operation-not-allowed': 'Ative este método de login no Firebase Authentication.',
+  'auth/unauthorized-domain': 'Adicione este domínio em Authentication > Configurações > Domínios autorizados.'
+}[e.code] || e.message);
+const TYPOS = { 'gmail.con': 'gmail.com', 'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmail.co': 'gmail.com', 'hotmial.com': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'outlook.con': 'outlook.com', 'yahoo.con': 'yahoo.com', 'icloud.con': 'icloud.com' };
+function checkEmail() {
+  const e = $('#email').value.trim(), d = (e.split('@')[1] || '').toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { errBox('E-mail inválido. Use o formato nome@exemplo.com.'); return null; }
+  if (TYPOS[d]) { errBox('Esse e-mail parece errado. Você quis dizer ' + e.split('@')[0] + '@' + TYPOS[d] + '?'); return null; }
+  if (!$('#pass').value) { errBox('Digite a senha.'); return null; }
+  errBox(''); return e;
+}
+$('#login').onclick = () => { const e = checkEmail(); if (e) auth.signInWithEmailAndPassword(e, $('#pass').value).catch(x => errBox(msgErr(x))); };
+$('#pass').addEventListener('keydown', e => e.key === 'Enter' && $('#login').click());
+$('#signup').onclick = async () => {
+  try {
+    const email = checkEmail(); if (!email) return;
+    const c = await auth.createUserWithEmailAndPassword(email, $('#pass').value);
+    await c.user.updateProfile({ displayName: email.split('@')[0] });
+    start(auth.currentUser);
+  } catch (e) { errBox(msgErr(e)); }
+};
+$('#google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => errBox(msgErr(e)));
+$('#logout').onclick = () => { leaveCall(); if (me) db.ref('presence/' + me.uid).remove(); auth.signOut(); };
+
+auth.onAuthStateChanged(u => {
+  if (!u) { me = null; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
+  start(u);
+});
+
+function paintName(n, c1, c2) { if (!c1) return; n.style.background = `linear-gradient(90deg,${c1},${c2 || c1})`; n.style.webkitBackgroundClip = 'text'; n.style.backgroundClip = 'text'; n.style.color = 'transparent'; }
+function paintMe() {
+  const n = $('#mename'); n.textContent = me.name; n.style.cssText = ''; paintName(n, me.c1, me.c2);
+  $('#meav').replaceChildren(avatar(me));
+}
+async function saveMe() {
+  db.ref('users/' + me.uid).update({ name: me.name, photo: me.photo, status: me.status, c1: me.c1, c2: me.c2, bio: me.bio, since: me.since });
+  db.ref('presence/' + me.uid).set(me.status);
+  const sv = (await db.ref('users/' + me.uid + '/servers').get()).val() || {};
+  Object.keys(sv).forEach(id => db.ref(`members/${id}/${me.uid}`).update({ name: me.name, photo: me.photo, c1: me.c1, c2: me.c2 }));
+}
+async function start(u) {
+  if (me && me.uid === u.uid) return;
+  me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0 };
+  $('#auth').hidden = true; $('#app').hidden = false; errBox('');
+  try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0 }); } catch (e) {}
+  me.since = me.since || Date.now(); paintMe(); saveMe();
+  on(serverSubs, db.ref('.info/connected'), 'value', c => {
+    if (!c.val()) return;
+    const r = db.ref('presence/' + me.uid); r.onDisconnect().remove(); r.set(me.status);
+  });
+  on(serverSubs, db.ref('presence'), 'value', s => { presence = s.val() || {}; renderMembers(); renderFriends(); });
+  on(serverSubs, db.ref('users/' + me.uid + '/servers'), 'value', s => renderRail(s.val() || {}));
+  on(serverSubs, db.ref('ring/' + me.uid), 'value', s => {
+    const r = s.val(); if (!r) return; db.ref('ring/' + me.uid).remove();
+    toast('📞 ' + r.name + ' está te ligando', 'Atender', () => { openDM(r.from, r.name); joinCall(r.room); });
+  });
+  const inv = new URLSearchParams(location.search).get('invite');
+  if (inv) { history.replaceState(null, '', location.pathname); joinServer(inv); }
+}
+
+/* ---------- servidores ---------- */
+function renderRail(list) {
+  const rail = $('#rail'); rail.replaceChildren();
+  const home = el('button', 'srv home' + (curHome ? ' on' : '')); home.onclick = showHome; home.title = 'Concord'; const hi = el('img'); hi.src = document.querySelector('.logo').src; hi.alt = 'Concord'; home.append(hi); rail.append(home, el('div', 'sep'));
+  Object.entries(list).forEach(([id, v]) => {
+    const b = el('button', 'srv' + (id === curServer ? ' on' : ''), (v.name || '?')[0].toUpperCase());
+    b.title = v.name; b.onclick = () => selectServer(id, v.name); rail.append(b);
+  });
+  rail.append(el('div', 'sep'));
+  const add = el('button', 'srv add', '＋'); add.title = 'Criar ou entrar em um servidor';
+  add.onclick = () => { $('#derr').textContent = ''; $('#dlg').showModal(); }; rail.append(add);
+  Object.keys(list).forEach(id => { if (checked.has(id)) return; checked.add(id); db.ref('servers/' + id + '/name').get().then(x => { if (!x.exists()) db.ref(`users/${me.uid}/servers/${id}`).remove(); }); checkAccess(id); });
+  if (!curServer && !curHome) showHome();
+}
+
+$('#mk').onclick = async () => {
+  const name = $('#newname').value.trim(); if (!name) return;
+  const id = db.ref('servers').push().key, cid = db.ref('channels/' + id).push().key;
+  const upd = {};
+  upd[`servers/${id}`] = { name, owner: me.uid };
+  upd[`channels/${id}/${cid}`] = { name: 'geral' };
+  upd[`members/${id}/${me.uid}`] = { name: me.name, photo: me.photo };
+  upd[`users/${me.uid}/servers/${id}`] = { name };
+  try { await db.ref().update(upd); $('#newname').value = ''; $('#dlg').close(); selectServer(id, name); }
+  catch (e) { $('#derr').textContent = 'Não foi possível criar: ' + e.message; }
+};
+$('#jn').onclick = async () => {
+  const id = $('#code').value.trim().split('invite=').pop(); if (!id) return;
+  try {
+    const s = await db.ref(`servers/${id}/name`).get();
+    if (!s.exists()) { $('#derr').textContent = 'Convite inválido.'; return; }
+    if ((await db.ref(`bans/${id}/${me.uid}`).get()).exists()) { $('#derr').textContent = 'Você foi banido deste servidor.'; return; }
+    const upd = {};
+    upd[`members/${id}/${me.uid}`] = { name: me.name, photo: me.photo };
+    upd[`users/${me.uid}/servers/${id}`] = { name: s.val() };
+    await db.ref().update(upd); $('#code').value = ''; $('#dlg').close(); selectServer(id, s.val());
+  } catch (e) { $('#derr').textContent = 'Erro ao entrar: ' + e.message; }
+};
+$('#invite').onclick = () => {
+  if (!curServer || curServer === 'dm') return;
+  navigator.clipboard?.writeText(location.origin + location.pathname + '?invite=' + curServer); toast('Link de convite copiado!');
+  $('#invite').textContent = '✓'; setTimeout(() => $('#invite').textContent = '⧉', 1200);
+};
+
+/* ---------- canais ---------- */
+function selectServer(id, name) {
+  clear(chanSubs); curServer = id; curChannel = null; curHome = false; $('#invite').hidden = false;
+  document.querySelectorAll('.srv').forEach(b => b.classList.toggle('on', b.title === name));
+  $('#sname').textContent = name; $('#addch').hidden = false;
+  roles = {}; mroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {};
+  db.ref('servers/' + id + '/owner').get().then(s => { serverOwner = s.val(); calcPerms(); });
+  const subs = chanSubs;
+  on(subs, db.ref('channels/' + id), 'value', s => { if (id !== curServer) return; curChans = s.val() || {}; renderChans(); svRefresh(); });
+  on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); svRefresh(); });
+  on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
+  on(subs, db.ref('bots/' + id), 'value', s => { bots = s.val() || {}; svRefresh(); });
+  on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
+  on(subs, db.ref('mutes/' + id), 'value', s => { mutes = s.val() || {}; });
+  on(subs, db.ref(`kicks/${id}/${me.uid}`), 'value', s => { if (s.exists()) { db.ref(`kicks/${id}/${me.uid}`).remove(); forceLeave(id, 'expulso'); } });
+  on(subs, db.ref('servers/' + id + '/name'), 'value', s => { if (!s.exists() && id === curServer) { db.ref(`users/${me.uid}/servers/${id}`).remove(); showHome(); toast('Este servidor foi apagado.'); } });
+  on(subs, db.ref('members/' + id), 'value', s => { members = s.val() || {}; renderMembers(); });
+}
+$('#addch').onclick = () => openSV('channels');
+
+let msgSubs = [];
+function selectChannel(cid, name) {
+  clear(msgSubs); curChannel = cid; lastMsg = null; rows = {}; $('#typing').textContent = '';
+  document.querySelectorAll('.ch').forEach(b => b.classList.toggle('on', b.textContent === '# ' + name));
+  $('#cname').textContent = '# ' + name;
+  const box = $('#box'); box.disabled = false; box.placeholder = 'Enviar mensagem em #' + name; box.focus();
+  const list = $('#msgs'); list.replaceChildren(el('div', 'empty', 'Início do canal #' + name + '. Diga olá!'));
+  let first = true;
+  const q = db.ref(`messages/${curServer}/${cid}`).limitToLast(100);
+  on(msgSubs, q, 'child_added', s => { if (first) { list.replaceChildren(); first = false; } addMsg(s.key, s.val()); });
+  on(msgSubs, q, 'child_changed', s => { if (rows[s.key]) { rows[s.key].m = s.val(); fill(s.key); } });
+  on(msgSubs, q, 'child_removed', s => { if (rows[s.key]) { rows[s.key].row.remove(); delete rows[s.key]; } });
+  on(msgSubs, db.ref('typing/' + cid), 'value', s => {
+    const n = Object.entries(s.val() || {}).filter(([u]) => u !== me.uid).map(([, v]) => v);
+    $('#typing').textContent = !n.length ? '' : n.length > 2 ? 'Várias pessoas estão digitando…' : n.join(' e ') + (n.length > 1 ? ' estão' : ' está') + ' digitando…';
+  });
+}
+
+let rows = {};
+function renderText(box, text, ts) {
+  box.replaceChildren(); let ping = false;
+  text.split(/(https?:\/\/[^\s<]+|@\S+)/).forEach((p, i) => {
+    if (!p) return;
+    if (i % 2 && p[0] === '@') {
+      const m = el('span', 'mention', p); box.append(m);
+      const t = p.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase();
+      if (t === me.name.replace(/\s+/g, '').toLowerCase() || t === 'everyone' || (t === 'here' && (ts || Date.now()) >= sessionStart)) ping = true;
+    } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; box.append(a); }
+    else box.append(document.createTextNode(p));
+  });
+  const img = text.match(/https?:\/\/[^\s<]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s<]*)?/i);
+  if (img) { const im = el('img', 'embed'); im.src = img[0]; im.loading = 'lazy'; im.referrerPolicy = 'no-referrer'; im.alt = ''; box.append(im); }
+  return ping;
+}
+function react(key, emo) {
+  const m = rows[key].m, has = m.reactions && m.reactions[emo] && m.reactions[emo][me.uid];
+  const ref = db.ref(`messages/${curServer}/${curChannel}/${key}/reactions/${emo}/${me.uid}`);
+  has ? ref.remove() : ref.set(true);
+}
+function fill(key) {
+  const r = rows[key], m = r.m;
+  const ping = renderText(r.txt, m.text, m.ts);
+  if (m.edited) r.txt.append(el('span', 'edited', ' (editado)'));
+  r.row.classList.toggle('ping', ping && m.uid !== me.uid);
+  r.rx.replaceChildren();
+  Object.entries(m.reactions || {}).forEach(([emo, us]) => {
+    const n = Object.keys(us).length; if (!n) return;
+    const b = el('button', 'rx' + (us[me.uid] ? ' on' : ''), emo + ' ' + n); b.onclick = () => react(key, emo); r.rx.append(b);
+  });
+}
+function addMsg(key, m) {
+  const list = $('#msgs'), near = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+  const time = new Date(m.ts || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const grouped = lastMsg && lastMsg.uid === m.uid && (m.ts || 0) - lastMsg.ts < 300000;
+  const row = el('div', 'm' + (grouped ? '' : ' first'));
+  if (grouped) row.append(el('span', 't', time)); else row.append(avatar(m));
+  const body = el('div'), txt = el('div', 'txt'), rx = el('div');
+  if (!grouped) {
+    const h = el('div'), n = el('span', 'who', m.name); paintName(n, m.c1 || roleColor(m.uid), m.c2);
+    h.append(n); if (m.bot) h.append(el('span', 'bottag', 'BOT')); if (m.nitro) h.append(el('span', 'nitro', '✦')); h.append(el('span', 'when', time)); body.append(h);
+  }
+  body.append(txt, rx); row.append(body);
+  const tools = el('div', 'tools');
+  ['👍', '❤️', '😂', '🎉'].forEach(e => { const b = el('button', null, e); b.onclick = () => react(key, e); tools.append(b); });
+  if (m.uid === me.uid || can('msgs')) {
+    const ed = el('button', null, '✏️'), del = el('button', null, '🗑');
+    ed.title = 'Editar'; del.title = 'Apagar';
+    ed.onclick = () => { const t = prompt('Editar mensagem:', rows[key].m.text); if (t && t.trim()) db.ref(`messages/${curServer}/${curChannel}/${key}`).update({ text: t.trim().slice(0, 4000), edited: true }); };
+    del.onclick = () => { if (confirm('Apagar esta mensagem?')) db.ref(`messages/${curServer}/${curChannel}/${key}`).remove(); };
+    if (m.uid === me.uid) tools.append(ed); tools.append(del);
+  }
+  row.append(tools); list.append(row);
+  rows[key] = { row, txt, rx, m }; fill(key);
+  lastMsg = { uid: m.uid, ts: m.ts || 0 };
+  if (near || m.uid === me.uid) list.scrollTop = list.scrollHeight;
+}
+
+$('#box').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.shiftKey) return;
+  e.preventDefault();
+  const text = e.target.value.trim(); if (!text || !curChannel) return;
+  if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
+  if (curServer !== 'dm' && /(^|\s)@(everyone|here)(?![\wÀ-ÿ])/i.test(text) && !can('admin')) return toast('Só o dono ou administradores podem usar @everyone e @here.');
+  e.target.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove();
+  db.ref(`messages/${curServer}/${curChannel}`).push({
+    uid: me.uid, name: me.name, photo: me.photo, c1: me.c1, c2: me.c2, nitro: true,
+    text: text.slice(0, 4000), ts: firebase.database.ServerValue.TIMESTAMP
+  }); runBots(text); concordBot(text);
+});
+let tTimer;
+$('#box').addEventListener('input', () => {
+  if (!curChannel) return;
+  const r = db.ref(`typing/${curChannel}/${me.uid}`); r.set(me.name); r.onDisconnect().remove();
+  clearTimeout(tTimer); tTimer = setTimeout(() => r.remove(), 3000);
+});
+
+/* ---------- membros ---------- */
+function renderMembers() {
+  const box = $('#mem'); box.replaceChildren();
+  if (curServer && curServer !== 'dm') { const r = el('div', 'u'), t = el('span', 'bottag', 'BOT'); t.style.marginLeft = '6px'; r.append(botAv(), el('span', null, 'ConcordBot'), t); box.append(el('h4', null, 'Bots'), r); }
+  const all = Object.entries(members);
+  const on_ = all.filter(([id]) => presence[id]), off = all.filter(([id]) => !presence[id]);
+  [['Online — ' + on_.length, on_], ['Offline — ' + off.length, off]].forEach(([t, arr]) => {
+    if (!arr.length) return;
+    box.append(el('h4', null, t));
+    arr.forEach(([id, u]) => {
+      const st = presence[id], row = el('div', 'u' + (st ? '' : ' off')), w = el('span', 'wrap'), n = el('span', null, u.name);
+      paintName(n, u.c1 || roleColor(id), u.c2);
+      w.append(avatar(u, id), el('span', 'dot ' + (typeof st === 'string' ? st : 'online')));
+      row.append(w, n); box.append(row);
+    });
+  });
+}
+
+/* ---------- configurações e Nitro ---------- */
+$('#settings').onclick = () => {
+  $('#s-name').value = me.name; $('#s-photo').value = me.photo; $('#s-bio').value = me.bio; $('#s-status').value = me.status;
+  $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal();
+};
+$('#s-save').onclick = () => {
+  me.name = $('#s-name').value.trim() || me.name; me.photo = $('#s-photo').value.trim(); me.bio = $('#s-bio').value.trim(); me.status = $('#s-status').value;
+  const use = $('#s-use').checked; me.c1 = use ? $('#s-c1').value : ''; me.c2 = use ? $('#s-c2').value : '';
+  paintMe(); saveMe(); $('#st').close();
+};
+
+/* ---------- emojis ---------- */
+const EMOJIS = '😀😁😂🤣😊😍😘😎🤔😢😭😡👍👎👏🙏💪🔥✨🎉❤️💚💔👀🤝🙌😴🤯🥳😅🙃😉😇🤩😱🍕☕🎮'.match(/\p{Extended_Pictographic}\uFE0F?/gu);
+EMOJIS.forEach(e => { const b = el('button', null, e); b.type = 'button'; b.onclick = () => { const x = $('#box'); x.value += e; x.focus(); }; $('#picker').append(b); });
+$('#emo').onclick = () => { $('#picker').hidden = !$('#picker').hidden; };
+document.addEventListener('click', e => { if (!e.target.closest('#emo,#picker')) $('#picker').hidden = true; });
+
+/* ---------- amigos, DMs e convites ---------- */
+let curHome = false, lastFriends = {}, rtk = 0, call = null;
+const uc = {}, getUser = async id => uc[id] || (uc[id] = (await db.ref('users/' + id).get()).val() || { name: '?' });
+const dmId = id => [me.uid, id].sort().join('_');
+const setF = (id, st) => db.ref().update({ [`friends/${me.uid}/${id}`]: st, [`friends/${id}/${me.uid}`]: st });
+function toast(t, label, fn) {
+  const d = el('div', 'toast', t);
+  if (label) { const b = el('button', 'btn', label); b.onclick = () => { fn(); d.remove(); }; d.append(b); }
+  document.body.append(d); setTimeout(() => d.remove(), label ? 30000 : 3500);
+}
+async function joinServer(id) {
+  const n = await db.ref(`servers/${id}/name`).get();
+  if (!n.exists()) return toast('Convite inválido ou expirado.');
+  if ((await db.ref(`bans/${id}/${me.uid}`).get()).exists()) return toast('Você foi banido deste servidor.');
+  await db.ref().update({ [`members/${id}/${me.uid}`]: { name: me.name, photo: me.photo, c1: me.c1, c2: me.c2 }, [`users/${me.uid}/servers/${id}`]: { name: n.val() } });
+  selectServer(id, n.val()); toast('Você entrou em ' + n.val());
+}
+function showHome() {
+  clear(chanSubs); clear(msgSubs); curHome = true; curServer = null; curChannel = null; members = {}; renderMembers();
+  document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('home')));
+  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
+  $('#msgs').replaceChildren(el('div', 'empty', 'Adicione amigos pelo nome de usuário, converse por mensagem direta e ligue para eles.'));
+  const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Enviar mensagem';
+  const c = $('#chans'); c.replaceChildren();
+  const r = el('div', 'row'), i = el('input'), ad = el('button', 'btn', '＋'), f = el('div');
+  r.style.padding = '4px 4px 8px'; i.id = 'fname'; i.placeholder = 'Adicionar amigo (nome exato)';
+  i.onkeydown = e => e.key === 'Enter' && addFriend(); ad.onclick = addFriend; f.id = 'flist'; r.append(i, ad); c.append(r, f);
+  on(chanSubs, db.ref('friends/' + me.uid), 'value', s => { lastFriends = s.val() || {}; renderFriends(); });
+}
+async function addFriend() {
+  const n = $('#fname').value.trim(); if (!n) return;
+  const q = await db.ref('users').orderByChild('name').equalTo(n).limitToFirst(1).get();
+  if (!q.exists()) return toast('Usuário não encontrado. Digite o nome exato.');
+  const id = Object.keys(q.val())[0];
+  if (id === me.uid) return toast('Você não pode adicionar a si mesmo.');
+  if (lastFriends[id] === 'incoming') return setF(id, 'friend');
+  if (lastFriends[id]) return toast('Já existe um pedido ou amizade com essa pessoa.');
+  await setF(id, null); await db.ref().update({ [`friends/${me.uid}/${id}`]: 'outgoing', [`friends/${id}/${me.uid}`]: 'incoming' });
+  $('#fname').value = ''; toast('Pedido de amizade enviado!');
+}
+async function renderFriends() {
+  const L = $('#flist'); if (!curHome || !L) return;
+  const tk = ++rtk, nodes = [];
+  for (const [title, st] of [['Pedidos recebidos', 'incoming'], ['Amigos', 'friend'], ['Pedidos enviados', 'outgoing']]) {
+    const ids = Object.keys(lastFriends).filter(k => lastFriends[k] === st); if (!ids.length) continue;
+    nodes.push(el('h4', null, title + ' — ' + ids.length));
+    for (const id of ids) {
+      const u = await getUser(id); if (tk !== rtk) return;
+      const row = el('div', 'u'), w = el('span', 'wrap'), n = el('span', null, u.name), p = presence[id];
+      n.style.flex = 1; paintName(n, u.c1, u.c2);
+      w.append(avatar(u, id), el('span', 'dot ' + (p ? (typeof p === 'string' ? p : 'online') : 'off'))); row.append(w, n);
+      const ib = (t, ti, fn) => { const b = el('button', 'icon', t); b.title = ti; b.onclick = e => { e.stopPropagation(); fn(); }; row.append(b); };
+      if (st === 'friend') { n.onclick = () => openDM(id, u.name); ib('💬', 'Mensagem', () => openDM(id, u.name)); ib('📞', 'Ligar', () => callDM(id, u.name)); ib('✕', 'Remover amigo', () => confirm('Remover ' + u.name + '?') && setF(id, null)); }
+      if (st === 'incoming') { ib('✓', 'Aceitar', () => setF(id, 'friend')); ib('✕', 'Recusar', () => setF(id, null)); }
+      if (st === 'outgoing') ib('✕', 'Cancelar pedido', () => setF(id, null));
+      nodes.push(row);
+    }
+  }
+  if (!nodes.length) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
+  L.replaceChildren(...nodes);
+}
+function openDM(id, name) {
+  curServer = 'dm'; selectChannel(dmId(id), name);
+  $('#cname').textContent = '@ ' + name; $('#box').placeholder = 'Enviar mensagem para @' + name;
+}
+async function callDM(id, name) {
+  openDM(id, name); const room = 'dm_' + dmId(id); await joinCall(room); if (!call) return;
+  const r = db.ref('ring/' + id); r.set({ from: me.uid, name: me.name, room }); r.onDisconnect().remove(); setTimeout(() => r.remove(), 30000);
+}
+
+/* ---------- chamadas de voz, vídeo e tela (WebRTC) ---------- */
+const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+function tile(id, name, stream, mine) {
+  let t = $('#t-' + id);
+  if (!t) { t = el('div', 'tile'); t.id = 't-' + id; t.append(el('video'), el('span', null, name)); $('#grid').append(t); }
+  const v = t.firstChild; v.autoplay = true; v.playsInline = true; v.dataset.me = mine ? '1' : '';
+  v.muted = !!mine || !!(call && call.deaf); v.srcObject = stream; v.play().catch(() => {});
+}
+async function joinCall(room) {
+  if (call) leaveCall();
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { return toast('Permita o microfone (a call só funciona em https ou localhost).'); }
+  call = { room, pcs: {}, stream, vt: null, kind: null, deaf: false, subs: [] };
+  ['#bmic', '#bdeaf'].forEach(b => $(b).className = ''); ['#bcam', '#bscr'].forEach(b => $(b).className = '');
+  $('#call').hidden = false; tile('me', me.name + ' (você)', stream, true);
+  const base = db.ref('calls/' + room), mine = base.child('peers/' + me.uid);
+  mine.set(me.name); mine.onDisconnect().remove();
+  on(call.subs, base.child('sig/' + me.uid), 'child_added', async s => { const m = s.val(); s.ref.remove(); try { await onSig(m); } catch (e) { console.warn(e); } });
+  on(call.subs, base.child('peers'), 'child_removed', s => closePeer(s.key));
+  const ex = (await base.child('peers').get()).val() || {};
+  Object.entries(ex).forEach(([id, n]) => id !== me.uid && connect(id, n, true));
+}
+function connect(id, name, offer) {
+  const pc = new RTCPeerConnection(ICE), p = { pc, name, q: [], ms: new MediaStream() }; call.pcs[id] = p;
+  call.stream.getAudioTracks().forEach(t => pc.addTrack(t, call.stream));
+  pc.addTransceiver(call.vt || 'video', { direction: 'sendrecv', streams: [call.stream] });
+  pc.onicecandidate = e => e.candidate && send(id, { t: 'ice', c: e.candidate.toJSON() });
+  pc.ontrack = e => { p.ms.addTrack(e.track); tile(id, name, p.ms); };
+  if (offer) pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => send(id, { t: 'offer', d: pc.localDescription.toJSON() }));
+  return p;
+}
+const send = (to, m) => call && db.ref(`calls/${call.room}/sig/${to}`).push({ ...m, from: me.uid });
+const flush = p => p.q.splice(0).forEach(c => p.pc.addIceCandidate(c).catch(() => {}));
+async function onSig(m) {
+  if (!call) return; let p = call.pcs[m.from];
+  if (m.t === 'offer') {
+    if (!p) p = connect(m.from, (await db.ref(`calls/${call.room}/peers/${m.from}`).get()).val() || 'Alguém');
+    if (p.pc.signalingState !== 'stable' && me.uid > m.from) return;
+    await p.pc.setRemoteDescription(m.d); await p.pc.setLocalDescription();
+    send(m.from, { t: 'answer', d: p.pc.localDescription.toJSON() }); flush(p);
+  } else if (m.t === 'answer' && p) { await p.pc.setRemoteDescription(m.d); flush(p); }
+  else if (m.t === 'ice' && p) p.pc.remoteDescription ? p.pc.addIceCandidate(m.c).catch(() => {}) : p.q.push(m.c);
+}
+function closePeer(id) { const p = call && call.pcs[id]; if (!p) return; p.pc.close(); delete call.pcs[id]; const t = $('#t-' + id); if (t) t.remove(); }
+function leaveCall() {
+  if (!call) return; const c = call; call = null; clear(c.subs);
+  Object.values(c.pcs).forEach(p => p.pc.close()); c.stream.getTracks().forEach(t => t.stop()); if (c.vt) c.vt.stop();
+  db.ref(`calls/${c.room}/peers/${me.uid}`).remove(); db.ref(`calls/${c.room}/sig/${me.uid}`).remove();
+  $('#grid').replaceChildren(); $('#call').hidden = true;
+}
+async function setVideo(kind) {
+  if (!call) return;
+  if (call.vt) { call.vt.stop(); call.stream.removeTrack(call.vt); call.vt = null; }
+  let t = null;
+  if (kind) try {
+    const s = kind === 'cam' ? await navigator.mediaDevices.getUserMedia({ video: true }) : await navigator.mediaDevices.getDisplayMedia({ video: true });
+    t = s.getVideoTracks()[0]; t.onended = () => setVideo(null); call.stream.addTrack(t);
+  } catch (e) { toast('Não foi possível iniciar o vídeo.'); }
+  call.vt = t; call.kind = t ? kind : null; tile('me', me.name + ' (você)', call.stream, true);
+  Object.values(call.pcs).forEach(p => p.pc.getTransceivers().find(x => x.receiver.track.kind === 'video').sender.replaceTrack(t));
+  $('#bcam').className = call.kind === 'cam' ? 'on' : ''; $('#bscr').className = call.kind === 'screen' ? 'on' : '';
+}
+$('#bmic').onclick = e => { if (!call) return; const t = call.stream.getAudioTracks()[0]; t.enabled = !t.enabled; e.currentTarget.className = t.enabled ? '' : 'off'; };
+$('#bdeaf').onclick = e => { if (!call) return; call.deaf = !call.deaf; document.querySelectorAll('#grid video').forEach(v => v.muted = call.deaf || v.dataset.me === '1'); e.currentTarget.className = call.deaf ? 'off' : ''; };
+$('#bcam').onclick = () => call && setVideo(call.kind === 'cam' ? null : 'cam');
+$('#bscr').onclick = () => call && setVideo(call.kind === 'screen' ? null : 'screen');
+$('#bend').onclick = leaveCall;
+window.addEventListener('beforeunload', leaveCall);
+
+/* ---------- perfil ---------- */
+async function showProfile(id) {
+  const u = (await db.ref('users/' + id).get()).val() || { name: 'Usuário' }; uc[id] = u;
+  const self = id === me.uid, st = self ? null : (await db.ref(`friends/${me.uid}/${id}`).get()).val();
+  const p = presence[id], d = $('#pf'), box = $('#pf-body'); box.replaceChildren();
+  const ban = el('div', 'pban'); ban.style.background = u.c1 ? `linear-gradient(90deg,${u.c1},${u.c2 || u.c1})` : 'var(--green)';
+  const av = avatar(u); av.classList.add('big');
+  const nm = el('h3', null, u.name), info = el('div', 'pinfo'); paintName(nm, u.c1, u.c2);
+  const h = el('div'); h.append(nm, el('span', 'nitro', '✦'));
+  const label = { online: 'Online', idle: 'Ausente', dnd: 'Não perturbe' }[typeof p === 'string' ? p : p ? 'online' : ''] || 'Offline';
+  const act = el('div', 'pact'), ab = (t, cls, fn, dis) => { const b = el('button', 'btn ' + cls, t); b.disabled = !!dis; b.onclick = () => { fn(); d.close(); }; act.append(b); };
+  if (self) ab('Editar perfil', '', () => $('#settings').click());
+  else {
+    if (st === 'friend') ab('✓ Amigos', 'ghost', () => {}, true);
+    else if (st === 'outgoing') ab('Pedido enviado', 'ghost', () => {}, true);
+    else if (st === 'incoming') ab('Aceitar pedido', '', () => setF(id, 'friend'));
+    else ab('Adicionar amigo', '', async () => { await db.ref().update({ [`friends/${me.uid}/${id}`]: 'outgoing', [`friends/${id}/${me.uid}`]: 'incoming' }); toast('Pedido enviado!'); });
+    ab('💬 Mensagem', 'ghost', () => openDM(id, u.name)); ab('📞 Ligar', 'ghost', () => callDM(id, u.name));
+  }
+  info.append(av, h, el('small', null, label + (u.since ? ' · Membro desde ' + new Date(u.since).toLocaleDateString('pt-BR') : '')), el('div', 'pbio', u.bio || 'Sem descrição ainda.'), act);
+  box.append(ban, info); d.showModal();
+}
+
+/* ---------- cargos, permissões, canais e bots ---------- */
+let roles = {}, mroles = {}, bots = {}, perms = {}, myRoles = {}, curChans = {}, svTab = 'channels', editCh = null;
+const isOwner = () => !!me && me.uid === serverOwner;
+const can = p => !!curServer && curServer !== 'dm' && (isOwner() || !!perms.admin || !!perms[p]);
+const hasRole = o => o && Object.keys(o).some(r => myRoles[r]);
+const canSee = c => !!c && (!c.view || can('admin') || hasRole(c.view));
+const canSend = () => { if (curServer === 'dm') return true; if ((mutes[me.uid] || 0) > Date.now()) return false; const c = curChans[curChannel]; return !c || !c.send || can('admin') || hasRole(c.send); };
+const roleColor = uid => { const r = Object.keys(mroles[uid] || {}).map(k => roles[k]).find(x => x && x.color); return r ? r.color : ''; };
+function calcPerms() {
+  myRoles = mroles[me.uid] || {}; perms = {};
+  Object.keys(myRoles).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
+  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; renderChans();
+}
+function renderChans() {
+  if (curHome || !curServer || curServer === 'dm') return;
+  const box = $('#chans'); box.replaceChildren();
+  const vis = Object.entries(curChans).filter(([, c]) => canSee(c));
+  vis.forEach(([cid, c]) => {
+    const v = c.type === 'voice', b = el('button', 'ch' + (cid === curChannel ? ' on' : ''), (v ? '🔊 ' : '# ') + c.name + (c.view ? ' 🔒' : ''));
+    b.onclick = () => v ? joinCall('v_' + curServer + '_' + cid) : selectChannel(cid, c.name); box.append(b);
+  });
+  const f1 = vis.find(([, c]) => c.type !== 'voice');
+  if (!canSee(curChans[curChannel]) && f1) selectChannel(f1[0], f1[1].name);
+}
+const svRefresh = () => { if (!$('#sv').hidden) renderSV(); };
+function openSV(t) { svTab = t || svTab; $('#sv').hidden = false; renderSV(); }
+$('#svset').onclick = () => openSV(can('channels') && !isOwner() ? 'channels' : svTab);
+$('#svx').onclick = () => $('#sv').hidden = true;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sv').hidden = true; });
+function renderSV() {
+  const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
+  const tabs = [['general', 'Geral', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots', isOwner()]].filter(t => t[2]);
+  if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
+  tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { svTab = k; editCh = null; renderSV(); }; n.append(b); });
+  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots })[svTab](c);
+}
+function roleChecks(title, sel) {
+  const box = el('div'), row = el('div', 'chk'), set = { ...(sel || {}) }; box.append(el('small', null, title));
+  if (!Object.keys(roles).length) row.append(el('small', null, '(crie cargos na aba Cargos)'));
+  Object.entries(roles).forEach(([r, o]) => {
+    const l = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; i.checked = !!set[r]; i.onchange = () => { i.checked ? set[r] = true : delete set[r]; };
+    l.append(i, el('span', null, o.name)); row.append(l);
+  });
+  box.append(row); return { box, get: () => Object.keys(set).length ? set : null };
+}
+function svChannels(c) {
+  const e = (editCh && curChans[editCh]) || {}, f = el('div', 'card2'), nm = el('input'), tp = el('select');
+  c.append(el('h2', null, 'Canais')); f.append(el('h3', null, editCh ? 'Editar canal' : 'Criar canal'));
+  nm.placeholder = 'nome-do-canal'; nm.value = e.name || '';
+  [['text', '# Texto'], ['voice', '🔊 Voz e vídeo']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; tp.append(o); }); tp.value = e.type || 'text';
+  const v = roleChecks('Quem pode ver este canal (nenhum marcado = todos)', e.view), w = roleChecks('Quem pode enviar mensagens (nenhum marcado = todos)', e.send);
+  const ok = el('button', 'btn', editCh ? 'Salvar canal' : 'Criar canal');
+  ok.onclick = () => {
+    const name = nm.value.trim().toLowerCase().replace(/\s+/g, '-').slice(0, 30); if (!name) return toast('Dê um nome ao canal.');
+    const d = { name, type: tp.value, view: v.get(), send: tp.value === 'voice' ? null : w.get() };
+    editCh ? db.ref(`channels/${curServer}/${editCh}`).set(d) : db.ref('channels/' + curServer).push(d); editCh = null; toast('Canal salvo!'); renderSV();
+  };
+  f.append(nm, tp, v.box, w.box, ok); c.append(f);
+  Object.entries(curChans).forEach(([cid, ch]) => {
+    const d = el('div', 'card2'), r = el('div', 'row'), t = el('b', null, (ch.type === 'voice' ? '🔊 ' : '# ') + ch.name + (ch.view ? ' 🔒' : '')); t.style.flex = 1;
+    const ed = el('button', 'icon', '✏️'), del = el('button', 'icon', '🗑');
+    ed.onclick = () => { editCh = cid; renderSV(); };
+    del.onclick = () => confirm('Apagar #' + ch.name + '?') && db.ref(`channels/${curServer}/${cid}`).remove();
+    r.append(t, ed, del); d.append(r); c.append(d);
+  });
+}
+const PERMS = [['admin', 'Administrador (todas as permissões)'], ['channels', 'Gerenciar canais'], ['msgs', 'Apagar mensagens de outros'], ['mod', 'Moderar membros (expulsar, banir, silenciar, limpar)']];
+function svRoles(c) {
+  const f = el('div', 'card2'), nm = el('input'), col = el('input');
+  c.append(el('h2', null, 'Cargos')); f.append(el('h3', null, 'Criar cargo'));
+  nm.placeholder = 'Nome do cargo'; col.type = 'color'; col.value = '#73cb27'; f.append(nm, col);
+  const cks = PERMS.map(([k, l]) => { const lb = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; lb.append(i, el('span', null, l)); f.append(lb); return [k, i]; });
+  const ok = el('button', 'btn', 'Criar cargo');
+  ok.onclick = () => {
+    if (!nm.value.trim()) return toast('Dê um nome ao cargo.');
+    const p = {}; cks.forEach(([k, i]) => { if (i.checked) p[k] = true; });
+    db.ref('roles/' + curServer).push({ name: nm.value.trim().slice(0, 30), color: col.value, perms: p }); toast('Cargo criado!');
+  };
+  f.append(ok); c.append(f);
+  Object.entries(roles).forEach(([rid, r]) => {
+    const d = el('div', 'card2'), h = el('div', 'row'), t = el('b', null, r.name), del = el('button', 'icon', '🗑'); t.style.color = r.color; t.style.flex = 1;
+    del.onclick = () => confirm('Apagar o cargo ' + r.name + '?') && db.ref(`roles/${curServer}/${rid}`).remove(); h.append(t, del); d.append(h);
+    PERMS.forEach(([k, l]) => {
+      const lb = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; i.checked = !!(r.perms && r.perms[k]);
+      i.onchange = () => db.ref(`roles/${curServer}/${rid}/perms/${k}`).set(i.checked || null); lb.append(i, el('span', null, l)); d.append(lb);
+    });
+    c.append(d);
+  });
+}
+function svMembers(c) {
+  c.append(el('h2', null, 'Membros e cargos'));
+  if (!Object.keys(roles).length) c.append(el('p', null, 'Crie cargos primeiro, na aba Cargos.'));
+  Object.entries(members).forEach(([uid, u]) => {
+    const d = el('div', 'card2'), row = el('div', 'chk'); d.append(el('b', null, u.name + (uid === serverOwner ? ' 👑' : '')));
+    Object.entries(roles).forEach(([rid, r]) => {
+      const lb = el('label', 'chk'), i = el('input'), sp = el('span', null, r.name); sp.style.color = r.color;
+      i.type = 'checkbox'; i.checked = !!(mroles[uid] && mroles[uid][rid]); i.onchange = () => db.ref(`memberRoles/${curServer}/${uid}/${rid}`).set(i.checked || null);
+      lb.append(i, sp); row.append(lb);
+    });
+    d.append(row); c.append(d);
+  });
+}
+function svBots(c) {
+  const f = el('div', 'card2'), nm = el('input'), tx = el('textarea'), lb = el('label', 'chk'), fun = el('input');
+  c.append(el('h2', null, 'Bots')); f.append(el('h3', null, 'Criar bot'));
+  nm.placeholder = 'Nome do bot'; tx.placeholder = 'Comandos, um por linha:\n!regras = Seja gentil com todos, {user}!\n!site = Bem-vindo a {server}';
+  fun.type = 'checkbox'; fun.checked = true; lb.append(fun, el('span', null, 'Incluir comandos de diversão (!dado !moeda !8ball !ping !hora !ajuda)'));
+  const ok = el('button', 'btn', 'Criar bot');
+  ok.onclick = () => { if (!nm.value.trim()) return toast('Dê um nome ao bot.'); db.ref('bots/' + curServer).push({ name: nm.value.trim().slice(0, 30), cmds: tx.value.slice(0, 2000), fun: fun.checked }); toast('Bot criado! Teste digitando um comando no chat.'); };
+  f.append(nm, tx, lb, ok); c.append(f, el('small', null, 'Variáveis: {user} = quem usou o comando, {server} = nome do servidor.'));
+  Object.entries(bots).forEach(([bid, b]) => {
+    const d = el('div', 'card2'), r = el('div', 'row'), t = el('b', null, '🤖 ' + b.name), del = el('button', 'icon', '🗑'); t.style.flex = 1;
+    del.onclick = () => confirm('Apagar o bot ' + b.name + '?') && db.ref(`bots/${curServer}/${bid}`).remove();
+    r.append(t, del); d.append(r, el('small', null, (b.fun ? 'Diversão ativa. ' : '') + (b.cmds ? b.cmds.split('\n').filter(Boolean).length + ' comandos personalizados.' : ''))); c.append(d);
+  });
+}
+const FUN = {
+  '!dado': () => '🎲 Saiu ' + (1 + Math.floor(Math.random() * 6)), '!moeda': () => Math.random() < .5 ? '🪙 Cara' : '🪙 Coroa', '!ping': () => '🏓 Pong!',
+  '!hora': () => '🕒 ' + new Date().toLocaleTimeString('pt-BR'), '!8ball': () => ['Sim.', 'Não.', 'Talvez.', 'Com certeza!', 'Pergunte de novo.'][Math.floor(Math.random() * 5)]
+};
+function runBots(text) {
+  if (curServer === 'dm') return; const cmd = text.trim().split(/\s+/)[0].toLowerCase();
+  Object.entries(bots).forEach(([bid, b]) => {
+    const lines = (b.cmds || '').split('\n').map(l => l.split('=')).filter(p => p.length > 1).map(p => [p[0].trim().toLowerCase(), p.slice(1).join('=').trim()]);
+    let r = (lines.find(l => l[0] === cmd) || [])[1];
+    if (!r && b.fun) r = cmd === '!ajuda' ? 'Comandos: ' + [...Object.keys(FUN), ...lines.map(l => l[0])].join(' ') : FUN[cmd] && FUN[cmd]();
+    if (r) db.ref(`messages/${curServer}/${curChannel}`).push({ uid: 'bot_' + bid, name: b.name, photo: '', bot: true, text: r.replace(/\{user\}/g, me.name).replace(/\{server\}/g, $('#sname').textContent).slice(0, 1000), ts: firebase.database.ServerValue.TIMESTAMP });
+  });
+}
+
+/* ---------- menções: @everyone, @here e autocomplete ---------- */
+const sessionStart = Date.now();
+const mp = el('div'); mp.id = 'mp'; mp.hidden = true; document.querySelector('.cwrap').append(mp);
+$('#box').addEventListener('input', e => {
+  const x = e.target, m = x.value.match(/@([^\s@]*)$/); mp.replaceChildren();
+  if (!m || !curServer || curServer === 'dm') { mp.hidden = true; return; }
+  const q = m[1].toLowerCase(), list = [];
+  if (can('admin')) list.push(['everyone', 'Notifica todos'], ['here', 'Notifica quem está online']);
+  Object.values(members).forEach(u => list.push([u.name.replace(/\s+/g, ''), u.name]));
+  const hit = list.filter(([n]) => n.toLowerCase().startsWith(q)).slice(0, 7);
+  hit.forEach(([n, d]) => {
+    const b = el('button'); b.type = 'button'; b.append(el('span', null, '@' + n), el('small', null, d === n ? '' : d));
+    b.onclick = () => { x.value = x.value.replace(/@([^\s@]*)$/, '@' + n + ' '); mp.hidden = true; x.focus(); }; mp.append(b);
+  });
+  mp.hidden = !hit.length;
+});
+document.addEventListener('click', e => { if (!e.target.closest('#mp,#box')) mp.hidden = true; });
+
+/* ---------- apagar e sair do servidor ---------- */
+const checked = new Set();
+function svGeneral(c) {
+  const id = curServer, link = location.origin + location.pathname + '?invite=' + id;
+  c.append(el('h2', null, 'Geral'));
+  const inv = el('div', 'card2'), lk = el('small', null, link), cp = el('button', 'btn ghost', 'Copiar link de convite');
+  lk.style.overflowWrap = 'anywhere'; cp.onclick = () => { navigator.clipboard?.writeText(link); toast('Link copiado!'); };
+  inv.append(el('h3', null, 'Convite'), lk, cp); c.append(inv);
+  const z = el('div', 'card2'), b = el('button', 'btn danger', isOwner() ? 'Apagar servidor' : 'Sair do servidor'); z.append(el('h3', null, 'Zona de perigo'));
+  if (isOwner()) { z.append(el('small', null, 'Apagar remove canais, cargos, bots e mensagens para todos. Não dá para desfazer.')); b.onclick = () => deleteServer(id); }
+  else b.onclick = () => leaveServer(id);
+  z.append(b); c.append(z);
+}
+async function deleteServer(id) {
+  const name = $('#sname').textContent;
+  const t = prompt('Isso apaga o servidor, os canais, cargos, bots e mensagens para todos.\nDigite o nome do servidor para confirmar:\n\n' + name);
+  if (t === null) return; if (t.trim() !== name) return toast('Nome incorreto. Nada foi apagado.');
+  try {
+    for (const p of ['messages', 'bots', 'roles', 'memberRoles', 'channels', 'members']) await db.ref(`${p}/${id}`).remove();
+    await db.ref('servers/' + id).remove();
+  } catch (e) { toast('Não foi possível apagar: ' + e.message); }
+}
+async function leaveServer(id) {
+  if (!confirm('Sair de ' + $('#sname').textContent + '?')) return;
+  await db.ref().update({ [`members/${id}/${me.uid}`]: null, [`users/${me.uid}/servers/${id}`]: null });
+  showHome(); toast('Você saiu do servidor.');
+}
+
+/* ---------- ConcordBot: diversão, utilidades e moderação ---------- */
+let bans = {}, mutes = {};
+function botAv() { const i = el('img', 'av'); i.src = document.querySelector('.logo').src; i.alt = ''; return i; }
+const say = t => db.ref(`messages/${curServer}/${curChannel}`).push({ uid: 'bot_concord', name: 'ConcordBot', photo: '', bot: true, text: String(t).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const findMember = tok => { const t = (tok || '').replace(/^@/, '').replace(/[.,!?;:]+$/, '').toLowerCase(); return Object.entries(members).find(([, u]) => u.name.replace(/\s+/g, '').toLowerCase() === t); };
+const JOKES = ['Por que o programador confunde Halloween com Natal? Porque 31 OCT = 25 DEC.', 'O que o zero disse pro oito? Belo cinto!', 'Qual é o cúmulo da rapidez? Fechar o zíper de uma cueca saindo do banho.', 'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.', 'O que o tomate foi fazer no banco? Tirar extrato.'];
+const FACTS = ['Polvos têm três corações. 🐙', 'O mel nunca estraga: já acharam mel comestível em tumbas egípcias. 🍯', 'Bananas são levemente radioativas por causa do potássio. 🍌', 'Um dia em Vênus dura mais que um ano em Vênus. 🪐', 'Os golfinhos chamam uns aos outros por assobios únicos. 🐬'];
+const MOD = () => curServer === 'dm' || !curServer ? '⛔ Esse comando só funciona em servidores.' : !can('mod') ? '⛔ Você precisa da permissão "Moderar membros".' : null;
+const modAct = async (a, fn) => {
+  const e = MOD(); if (e) return e;
+  const m = a.map(x => findMember(x)).find(Boolean); if (!m) return 'Marque um membro do servidor. Ex.: !kick @pessoa';
+  const [id, u] = m; if (id === serverOwner || id === me.uid) return '⛔ Não posso fazer isso com essa pessoa.';
+  return fn(id, u);
+};
+const CB = {
+  '!ajuda': () => 'Sou o ConcordBot 🤖\n🎉 Diversão: !dado [lados] !moeda !8ball pergunta !piada !fato !escolher a, b, c !abraco @pessoa !ship @a @b !calc 2+2 !enquete pergunta\n🛠 Utilidades: !ping !hora !servidor !perfil @pessoa\n🛡 Moderação: !kick @p · !ban @p · !unban nome · !mute @p minutos · !unmute @p · !avisar @p motivo · !limpar N',
+  '!ping': () => '🏓 Pong!', '!hora': () => '🕒 ' + new Date().toLocaleString('pt-BR'),
+  '!dado': a => '🎲 Saiu ' + (1 + Math.floor(Math.random() * Math.max(2, Math.min(1000, +a[0] || 6)))),
+  '!moeda': () => pick(['🪙 Cara', '🪙 Coroa']),
+  '!8ball': (a, r) => r ? '🎱 ' + pick(['Sim.', 'Não.', 'Talvez.', 'Com certeza!', 'Nem pensar.', 'Pergunte de novo mais tarde.']) : 'Faça uma pergunta. Ex.: !8ball vou passar?',
+  '!piada': () => '😂 ' + pick(JOKES), '!fato': () => '💡 ' + pick(FACTS),
+  '!escolher': (a, r) => { const o = r.split(',').map(x => x.trim()).filter(Boolean); return o.length > 1 ? '🤔 Eu escolho: ' + pick(o) : 'Use: !escolher pizza, sushi, hambúrguer'; },
+  '!abraco': a => `🤗 ${me.name} abraçou ${a[0] || 'todo mundo'}!`,
+  '!ship': a => { if (a.length < 2) return 'Use: !ship @pessoa1 @pessoa2'; let n = 0; (a[0] + a[1]).toLowerCase().split('').forEach(c => n += c.charCodeAt(0)); return `💘 ${a[0]} + ${a[1]} = ${n % 101}% de compatibilidade`; },
+  '!calc': (a, r) => { if (!/^[\d\s+\-*/().%,]+$/.test(r)) return 'Use só números e + - * / ( ). Ex.: !calc 2*(3+4)'; const v = Function('"use strict";return (' + r.replace(/,/g, '.') + ')')(); return Number.isFinite(v) ? '🧮 ' + r + ' = ' + v : '⚠️ Conta inválida.'; },
+  '!enquete': (a, r) => r ? `📊 ENQUETE: ${r}\nReaja: 👍 sim · ❤️ talvez · 😂 não` : 'Use: !enquete sua pergunta',
+  '!servidor': () => curServer === 'dm' ? '⛔ Esse comando só funciona em servidores.' : `🏠 ${$('#sname').textContent}\n👥 ${Object.keys(members).length} membros · 📺 ${Object.keys(curChans).length} canais · 🎭 ${Object.keys(roles).length} cargos\n👑 Dono: ${(members[serverOwner] || {}).name || '?'}`,
+  '!perfil': async a => { const m = findMember(a[0]) || [me.uid]; const u = (await db.ref('users/' + m[0]).get()).val() || {}; return `👤 ${u.name || '?'}\n${u.bio || 'Sem descrição ainda.'}`; },
+  '!kick': a => modAct(a, async (id, u) => { await db.ref(`kicks/${curServer}/${id}`).set(Date.now()); return `👢 ${u.name} foi expulso por ${me.name}.`; }),
+  '!ban': a => modAct(a, async (id, u) => { await db.ref(`bans/${curServer}/${id}`).set(u.name); return `🔨 ${u.name} foi banido por ${me.name}.`; }),
+  '!unban': async (a, r) => {
+    const e = MOD(); if (e) return e; const hit = Object.entries(bans).find(([, v]) => String(v).replace(/\s+/g, '').toLowerCase() === r.replace(/\s+/g, '').replace(/^@/, '').toLowerCase());
+    if (!hit) return 'Ninguém banido com esse nome. Use: !unban nome'; await db.ref(`bans/${curServer}/${hit[0]}`).remove(); return `✅ ${hit[1]} foi desbanido.`;
+  },
+  '!mute': a => modAct(a, async (id, u) => { const min = +a.find(x => /^\d+$/.test(x)) || 10; await db.ref(`mutes/${curServer}/${id}`).set(Date.now() + min * 60000); return `🔇 ${u.name} foi silenciado por ${min} min.`; }),
+  '!unmute': a => modAct(a, async (id, u) => { await db.ref(`mutes/${curServer}/${id}`).remove(); return `🔊 ${u.name} pode falar de novo.`; }),
+  '!avisar': a => modAct(a, (id, u) => `⚠️ @${u.name.replace(/\s+/g, '')}, aviso de ${me.name}: ${a.filter(x => x[0] !== '@').join(' ') || 'sem motivo informado'}`),
+  '!limpar': async a => {
+    const e = MOD(); if (e) return e; const n = Math.min(100, +a[0] || 0); if (!n) return 'Use: !limpar 10 (até 100)';
+    const q = await db.ref(`messages/${curServer}/${curChannel}`).limitToLast(n + 1).get(), u = {}; q.forEach(c => { u[c.key] = null; });
+    await db.ref(`messages/${curServer}/${curChannel}`).update(u); return `🧹 ${n} mensagens apagadas por ${me.name}.`;
+  }
+};
+async function concordBot(text) {
+  if (text[0] !== '!') return;
+  const [c, ...a] = text.trim().split(/\s+/), f = CB[c.toLowerCase()]; if (!f) return;
+  try { const r = await f(a, a.join(' ')); if (r) say(r); } catch (e) { say('⚠️ Não consegui executar: ' + e.message); }
+}
+async function forceLeave(id, why) {
+  await db.ref().update({ [`members/${id}/${me.uid}`]: null, [`users/${me.uid}/servers/${id}`]: null });
+  if (curServer === id) showHome(); toast('Você foi ' + why + ' do servidor.');
+}
+function checkAccess(id) {
+  db.ref(`bans/${id}/${me.uid}`).get().then(x => x.exists() && forceLeave(id, 'banido'));
+  db.ref(`kicks/${id}/${me.uid}`).get().then(x => { if (x.exists()) { db.ref(`kicks/${id}/${me.uid}`).remove(); forceLeave(id, 'expulso'); } });
+}
+</script>
+</body>
+</html>
