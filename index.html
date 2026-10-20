@@ -1236,13 +1236,14 @@ const BP = {
 const OFFICIAL = 'https://reidodesenho382-collab.github.io/Concord/?invite=-P4GYMqcIDLEy5yvHyAA';
 async function botDM() {
   try {
-    const t = await db.ref(`users/${me.uid}/botdm`).transaction(v => v ? undefined : true); if (!t.committed) return;
-    await db.ref(`messages/dm/${dmId('bot_concord')}`).push({
+    const ref = db.ref(`messages/dm/${dmId('bot_concord')}`);
+    if ((await ref.limitToFirst(1).get()).exists()) return;
+    await ref.push({
       uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', ts: firebase.database.ServerValue.TIMESTAMP,
       text: `👋 Olá, ${me.name}! Eu sou o ConcordBot, e seja bem-vindo(a) ao Concord!\nEntre no nosso servidor oficial para conhecer a comunidade, ver as novidades e tirar dúvidas:\n${OFFICIAL}\nÉ só tocar no link para entrar. Digite !ajuda para ver tudo o que eu faço. 🤖`
     });
     toast('🤖 ConcordBot te enviou uma mensagem', 'Abrir', () => openDM('bot_concord', 'ConcordBot'));
-  } catch (e) {}
+  } catch (e) { toast('ConcordBot (DM): ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
 </script>
 </body>
