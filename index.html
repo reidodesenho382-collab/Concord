@@ -342,7 +342,7 @@ async function start(u) {
   me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0 };
   $('#auth').hidden = true; $('#app').hidden = false; errBox('');
   try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0 }); } catch (e) {}
-  me.since = me.since || Date.now(); paintMe(); saveMe();
+  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM();
   on(serverSubs, db.ref('.info/connected'), 'value', c => {
     if (!c.val()) return;
     const r = db.ref('presence/' + me.uid); r.onDisconnect().remove(); r.set(me.status);
@@ -458,7 +458,7 @@ function renderText(box, text, ts) {
       const m = el('span', 'mention', p); box.append(m);
       const t = p.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase();
       if (t === me.name.replace(/\s+/g, '').toLowerCase() || t === 'everyone' || (t === 'here' && (ts || Date.now()) >= sessionStart)) ping = true;
-    } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; box.append(a); }
+    } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; const iv = p.match(/[?&]invite=([\w-]+)/); if (iv) a.onclick = e => { e.preventDefault(); joinServer(iv[1]); }; box.append(a); }
     else box.append(document.createTextNode(p));
   });
   const img = text.match(/https?:\/\/[^\s<]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s<]*)?/i);
@@ -613,7 +613,9 @@ async function addFriend() {
 }
 async function renderFriends() {
   const L = $('#flist'); if (!curHome || !L) return;
-  const tk = ++rtk, nodes = [];
+  const tk = ++rtk, nodes = [el('h4', null, 'Mensagens diretas')];
+  { const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'ConcordBot'), tg = el('span', 'bottag', 'BOT'); nm.style.flex = 1;
+    w.append(botAv(), el('span', 'dot online')); r.append(w, nm, tg); r.onclick = () => openDM('bot_concord', 'ConcordBot'); nodes.push(r); }
   for (const [title, st] of [['Pedidos recebidos', 'incoming'], ['Amigos', 'friend'], ['Pedidos enviados', 'outgoing']]) {
     const ids = Object.keys(lastFriends).filter(k => lastFriends[k] === st); if (!ids.length) continue;
     nodes.push(el('h4', null, title + ' — ' + ids.length));
@@ -629,7 +631,7 @@ async function renderFriends() {
       nodes.push(row);
     }
   }
-  if (!nodes.length) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
+  if (nodes.length <= 2) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
   L.replaceChildren(...nodes);
 }
 function openDM(id, name) {
@@ -1229,6 +1231,19 @@ const BP = {
     d.append(on_, an); k.save(d, () => R().child('xp').set({ on: on_.input.checked, announce: an.input.checked }));
   }
 };
+
+/* ---------- DM de boas-vindas do ConcordBot ---------- */
+const OFFICIAL = 'https://reidodesenho382-collab.github.io/Concord/?invite=-P4GYMqcIDLEy5yvHyAA';
+async function botDM() {
+  try {
+    const t = await db.ref(`users/${me.uid}/botdm`).transaction(v => v ? undefined : true); if (!t.committed) return;
+    await db.ref(`messages/dm/${dmId('bot_concord')}`).push({
+      uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', ts: firebase.database.ServerValue.TIMESTAMP,
+      text: `👋 Olá, ${me.name}! Eu sou o ConcordBot, e seja bem-vindo(a) ao Concord!\nEntre no nosso servidor oficial para conhecer a comunidade, ver as novidades e tirar dúvidas:\n${OFFICIAL}\nÉ só tocar no link para entrar. Digite !ajuda para ver tudo o que eu faço. 🤖`
+    });
+    toast('🤖 ConcordBot te enviou uma mensagem', 'Abrir', () => openDM('bot_concord', 'ConcordBot'));
+  } catch (e) {}
+}
 </script>
 </body>
 </html>
