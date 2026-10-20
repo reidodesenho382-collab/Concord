@@ -512,6 +512,8 @@ $('#box').addEventListener('keydown', e => {
   if (e.key !== 'Enter' || e.shiftKey) return;
   e.preventDefault();
   const text = e.target.value.trim(); if (!text || !curChannel) return;
+  const km = text.match(/^[!./$%?&*+-]?(setkey|delkey)\b\s*(.*)$/i);
+  if (km) { e.target.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove(); groqKeyCmd(km[1].toLowerCase(), km[2].trim()); return; }
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   if (curServer !== 'dm' && /(^|\s)@(everyone|here)(?![\wÀ-ÿ])/i.test(text) && !can('admin')) return toast('Só o dono ou administradores podem usar @everyone e @here.');
   const am = automod(text); if (am) { toast('🛡 AutoMod: ' + am); return; }
@@ -519,7 +521,7 @@ $('#box').addEventListener('keydown', e => {
   db.ref(`messages/${curServer}/${curChannel}`).push({
     uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true,
     text: text.slice(0, 4000), ts: firebase.database.ServerValue.TIMESTAMP
-  }); runBots(text); concordBot(text); giveXp();
+  }); runBots(text); concordBot(text); giveXp(); askAI(text);
 });
 let tTimer;
 $('#box').addEventListener('input', () => {
@@ -873,7 +875,7 @@ $('#box').addEventListener('input', e => {
   const x = e.target, m = x.value.match(/@([^\s@]*)$/); mp.replaceChildren();
   if (!m || !curServer || curServer === 'dm') { mp.hidden = true; return; }
   const q = m[1].toLowerCase(), list = [];
-  if (can('admin')) list.push(['everyone', 'Notifica todos'], ['here', 'Notifica quem está online']);
+  list.push(['ConcordBot', 'Pergunte algo à IA']); if (can('admin')) list.push(['everyone', 'Notifica todos'], ['here', 'Notifica quem está online']);
   Object.values(members).forEach(u => list.push([u.name.replace(/\s+/g, ''), u.name]));
   const hit = list.filter(([n]) => n.toLowerCase().startsWith(q)).slice(0, 7);
   hit.forEach(([n, d]) => {
@@ -1245,6 +1247,44 @@ async function botDM() {
     toast('🤖 ConcordBot te enviou uma mensagem', 'Abrir', () => openDM('bot_concord', 'ConcordBot'));
   } catch (e) { toast('ConcordBot (DM): ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
+
+/* ---------- IA do ConcordBot (Groq) ---------- */
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions', GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const getKey = () => { try { return localStorage.getItem('concord_groq') || ''; } catch (e) { return ''; } };
+function groqKeyCmd(cmd, key) {
+  if (cmd === 'delkey') { try { localStorage.removeItem('concord_groq'); } catch (e) {} return toast('🔑 Chave da Groq removida deste aparelho.'); }
+  if (!/^gsk_\S{16,}$/.test(key)) return toast('Use: !setkey gsk_SUA_CHAVE (crie uma grátis em console.groq.com/keys)');
+  try { localStorage.setItem('concord_groq', key); toast('🔑 Chave salva só neste aparelho! Agora mencione @ConcordBot e escreva algo.'); }
+  catch (e) { toast('Não consegui salvar a chave neste navegador.'); }
+}
+async function askAI(text) {
+  const botDm = curServer === 'dm' && curChannel === dmId('bot_concord');
+  if (!/@concordbot\b/i.test(text) && !botDm) return; if (botDm && /^[!./$%?&*+-]/.test(text)) return;
+  const path = `messages/${curServer}/${curChannel}`, who = '@' + me.name.replace(/\s+/g, '') + ' ';
+  const post = t => db.ref(path).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: String(t).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
+  const q = text.replace(/@concordbot\b/ig, '').trim();
+  if (!q) return post(who + 'oi! Escreva algo depois da menção. Ex.: @ConcordBot me conte uma curiosidade 🙂');
+  const key = getKey();
+  if (!key) return post(`❌ ${who}você ainda não configurou a chave da Groq, então não consigo responder. Crie uma grátis em console.groq.com/keys e envie aqui: !setkey SUA_CHAVE (a chave fica só no seu aparelho e a mensagem não aparece para ninguém).`);
+  const ctx = Object.values(rows).slice(-8).map(r => r.m).filter(m => m.text && m.text !== text).slice(-6).map(m => ({ role: m.bot ? 'assistant' : 'user', content: (m.bot ? '' : m.name + ': ') + m.text.slice(0, 500) }));
+  const msgs = [{ role: 'system', content: 'Você é o ConcordBot, o assistente simpático do Concord, um app de chat parecido com o Discord. Responda em português do Brasil, de forma curta, clara e amigável (no máximo 1200 caracteres). Cada mensagem do usuário começa com o nome de quem escreveu.' }, ...ctx, { role: 'user', content: me.name + ': ' + q }];
+  $('#typing').textContent = 'ConcordBot está pensando…';
+  try {
+    let reply = '', err = '';
+    for (const model of GROQ_MODELS) {
+      const r = await fetch(GROQ_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ model, messages: msgs, max_tokens: 600, temperature: .7 }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) { reply = d.choices[0].message.content; break; }
+      err = (d.error && d.error.message) || 'erro ' + r.status;
+      if (r.status === 401) return post(`❌ ${who}a Groq recusou a sua chave (inválida ou revogada). Envie !setkey NOVA_CHAVE para trocar.`);
+      if (r.status === 429) return post(`⏳ ${who}você atingiu o limite da Groq. Tente de novo daqui a pouco.`);
+    }
+    post(reply ? who + reply : `⚠️ ${who}a Groq não conseguiu responder: ${err}`);
+  } catch (e) { post(`⚠️ ${who}não consegui falar com a Groq (internet ou bloqueio do navegador).`); }
+  finally { if ($('#typing').textContent.startsWith('ConcordBot')) $('#typing').textContent = ''; }
+}
+const _h3 = CB['!ajuda'];
+CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 </script>
 </body>
 </html>
