@@ -771,9 +771,9 @@ $('#svx').onclick = () => $('#sv').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sv').hidden = true; });
 function renderSV() {
   const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
-  const tabs = [['general', 'Geral', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots extras', isOwner()]].filter(t => t[2]);
+  const tabs = [['general', 'Geral', true], ['panel', '🤖 Painel do ConcordBot', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots extras', isOwner()]].filter(t => t[2]);
   if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
-  tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { svTab = k; editCh = null; renderSV(); }; n.append(b); });
+  tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { if (k === 'panel') { $('#sv').hidden = true; return openBP(); } svTab = k; editCh = null; renderSV(); }; n.append(b); });
   ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots })[svTab](c);
 }
 function roleChecks(title, sel) {
