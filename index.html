@@ -350,7 +350,7 @@ $('#google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthPr
 $('#logout').onclick = () => { leaveCall(); if (me) db.ref('presence/' + me.uid).remove(); auth.signOut(); };
 
 auth.onAuthStateChanged(u => {
-  if (!u) { me = null; checked.clear(); srvInfo = {}; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
+  if (!u) { me = null; checked.clear(); srvInfo = {}; bookSubs = {}; bookData = {}; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
   start(u);
 });
 
@@ -604,6 +604,7 @@ function renderPicker() {
     list.forEach(o => { const b = el('button'), im = el('img', 'emoji'); b.type = 'button'; im.src = o.img; im.style.height = '26px'; b.title = ':' + o.name + ':'; b.append(im); b.onclick = () => { const x = $('#box'); x.value += ':' + o.name + ': '; x.focus(); }; p.append(b); });
   };
   sec('Deste servidor', Object.values(ownEmojis())); others().forEach(sid => sec(srvName(sid), Object.values(bookData[sid].emojis)));
+  if (!allEmojiList().length) { const h = el('small', null, 'Nenhum emoji personalizado nos seus servidores. Digite !emojis para ver o que foi carregado.'); h.style.gridColumn = '1/-1'; p.append(h); }
 }
 $('#emo').onclick = () => { $('#stk').hidden = true; renderPicker(); $('#picker').hidden = !$('#picker').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#emo,#picker')) $('#picker').hidden = true; });
@@ -1398,7 +1399,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.21-painel';
+const BUILD = '2026.10.23-emojis2';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -1507,26 +1508,38 @@ function sendSticker(id, sid) {
 }
 const stk = el('div'), sb = el('button', 'icon', '🖼'); stk.id = 'stk'; stk.hidden = true; sb.id = 'stkbtn'; sb.title = 'Figurinhas';
 document.querySelector('.cwrap').append(stk); $('#emo').before(sb);
-sb.onclick = () => {
-  $('#picker').hidden = true; stk.replaceChildren();
+function buildStk() {
+  stk.replaceChildren();
   const secs = [], full = x => Object.keys(x).length > 0, hd = t => { const h = el('small', null, t); h.style.gridColumn = '1/-1'; stk.append(h); };
   if (full(ownStickers())) secs.push([curServer, 'Deste servidor', ownStickers()]);
   others().forEach(sid => { if (full(bookData[sid].stickers)) secs.push([sid, srvName(sid), bookData[sid].stickers]); });
-  if (!secs.length) hd('Nenhuma figurinha ainda. O dono de um servidor adiciona em ⚙ > Emojis e figurinhas.');
+  if (!secs.length) {
+    hd('Nenhuma figurinha encontrada nos seus servidores. O dono de um servidor adiciona em ⚙ > Emojis e figurinhas.');
+    Object.keys(lastRailList).forEach(sid => hd('• ' + srvName(sid) + ': ' + (bookErr[sid] ? '⚠ ' + bookErr[sid] : bookData[sid] ? Object.keys(bookData[sid].stickers).length + ' figurinhas' : 'carregando…')));
+  }
   secs.forEach(([sid, title, items]) => {
     hd(title);
     Object.entries(items).forEach(([id, x]) => { const b = el('button'), im = el('img'); b.type = 'button'; b.title = x.name; im.src = x.img; b.append(im); b.onclick = () => { stk.hidden = true; sendSticker(id, sid); }; stk.append(b); });
   });
-  stk.hidden = !stk.hidden;
-};
+}
+sb.onclick = () => { $('#picker').hidden = true; stk.hidden = !stk.hidden; if (!stk.hidden) buildStk(); };
 document.addEventListener('click', e => { if (!e.target.closest('#stkbtn,#stk')) stk.hidden = true; });
 
 /* ---------- emojis e figurinhas de todos os seus servidores ---------- */
-let bookData = {}, bookP = {}, curEref = null;
+let bookData = {}, bookSubs = {}, curEref = null;
 const ownEmojis = () => curServer && curServer !== 'dm' ? (cfg.emojis || {}) : {};
 const ownStickers = () => curServer && curServer !== 'dm' ? (cfg.stickers || {}) : {};
-const getBook = sid => bookP[sid] || (bookP[sid] = Promise.all([db.ref(`botcfg/${sid}/emojis`).get(), db.ref(`botcfg/${sid}/stickers`).get()]).then(([a, b]) => ({ emojis: a.val() || {}, stickers: b.val() || {} })));
-function loadBook(sid) { getBook(sid).then(b => { if (!bookData[sid]) { bookData[sid] = b; Object.keys(rows).forEach(k => fill(k)); } }).catch(() => {}); }
+const bookErr = {}, warned = {};
+function bookChanged() { Object.keys(rows).forEach(k => fill(k)); if (!$('#picker').hidden) renderPicker(); if (!stk.hidden) buildStk(); }
+function loadBook(sid) {
+  if (bookSubs[sid]) return; bookSubs[sid] = true; bookData[sid] = bookData[sid] || { emojis: {}, stickers: {} };
+  ['emojis', 'stickers'].forEach(k => {
+    const ref = db.ref(`botcfg/${sid}/${k}`);
+    const fn = snap => { bookData[sid][k] = snap.val() || {}; delete bookErr[sid]; bookChanged(); };
+    const er = e => { bookErr[sid] = e.message; if (!warned[sid]) { warned[sid] = 1; toast('Não consegui ler os emojis de ' + srvName(sid) + ': ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase (publique as regras do Realtime Database).' : e.message)); } };
+    ref.on('value', fn, er); serverSubs.push(() => ref.off('value', fn));
+  });
+}
 function loadBooks() { Object.keys(lastRailList).forEach(loadBook); }
 const srvName = sid => ((srvInfo[sid] || lastRailList[sid] || {}).name || 'Servidor');
 const others = () => Object.keys(bookData).filter(sid => sid !== curServer && lastRailList[sid]);
@@ -1583,6 +1596,15 @@ function svTag(c) {
   rm.onclick = async () => { try { await db.ref('servers/' + curServer + '/tag').remove(); delete tagCache[curServer]; img = ''; toast('Tag removida.'); } catch (e) { toast('Erro: ' + e.message); } };
   d.append(tx, em, fi, el('small', null, 'Prévia:'), prev, ok, rm); c.append(d);
 }
+
+/* ---------- diagnóstico dos emojis ---------- */
+CB['!emojis'] = () => {
+  const lines = Object.keys(lastRailList).map(sid => {
+    const b = sid === curServer && cfg.emojis ? { emojis: cfg.emojis, stickers: cfg.stickers || {} } : bookData[sid];
+    return b ? `• ${srvName(sid)}: ${Object.keys(b.emojis).length} emojis, ${Object.keys(b.stickers).length} figurinhas` : `• ${srvName(sid)}: ${bookErr[sid] ? '⚠ erro: ' + bookErr[sid] : 'carregando…'}`;
+  });
+  return '🎭 Emojis e figurinhas que você pode usar em qualquer servidor ou DM:\n' + (lines.join('\n') || 'Você não está em nenhum servidor.');
+};
 </script>
 </body>
 </html>
