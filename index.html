@@ -761,8 +761,8 @@ let roles = {}, mroles = {}, bots = {}, perms = {}, myRoles = {}, curChans = {},
 const isOwner = () => !!me && me.uid === serverOwner;
 const can = p => !!curServer && curServer !== 'dm' && (isOwner() || !!perms.admin || !!perms[p]);
 const hasRole = o => o && Object.keys(o).some(r => myRoles[r]);
-const canSee = c => !!c && (!c.view || can('admin') || hasRole(c.view));
-const canSend = () => { if (curServer === 'dm') return true; if ((mutes[me.uid] || 0) > Date.now()) return false; const c = curChans[curChannel]; return !c || !c.send || can('admin') || hasRole(c.send); };
+const canSee = c => !!c && (c.ticket ? (c.ticket.owner === me.uid || !!(c.viewUsers && c.viewUsers[me.uid]) || staff()) : (!c.view || can('admin') || hasRole(c.view)));
+const canSend = () => { if (curServer === 'dm') return true; if ((mutes[me.uid] || 0) > Date.now()) return false; const c = curChans[curChannel]; if (c && c.ticket && c.ticket.status === 'closed' && !staff()) return false; return !c || !c.send || can('admin') || hasRole(c.send); };
 const roleColor = uid => { const r = Object.keys(mroles[uid] || {}).map(k => roles[k]).find(x => x && x.color); return r ? r.color : ''; };
 function calcPerms() {
   myRoles = mroles[me.uid] || {}; perms = {};
@@ -774,7 +774,7 @@ function renderChans() {
   const box = $('#chans'); box.replaceChildren();
   const vis = Object.entries(curChans).filter(([, c]) => canSee(c));
   vis.forEach(([cid, c]) => {
-    const v = c.type === 'voice', b = el('button', 'ch' + (cid === curChannel ? ' on' : ''), (v ? '🔊 ' : '# ') + c.name + (c.view ? ' 🔒' : ''));
+    const v = c.type === 'voice', b = el('button', 'ch' + (cid === curChannel ? ' on' : ''), (c.ticket ? (c.ticket.status === 'closed' ? '🔒 ' : '🎫 ') : v ? '🔊 ' : '# ') + c.name + (c.view && !c.ticket ? ' 🔒' : ''));
     b.onclick = () => v ? joinCall('v_' + curServer + '_' + cid) : selectChannel(cid, c.name); box.append(b);
   });
   const f1 = vis.find(([, c]) => c.type !== 'voice');
@@ -1191,7 +1191,7 @@ function kit(c) {
 function renderBP() {
   const n = $('#bpn'), c = $('#bpc'), h = el('div', 'bphead'), lg = el('img'); n.replaceChildren(); c.replaceChildren();
   lg.src = document.querySelector('.logo').src; lg.alt = ''; lg.style.cssText = 'width:38px;height:38px;border-radius:11px'; h.append(lg, el('b', null, 'ConcordBot')); n.append(h);
-  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP']].forEach(([k, l]) => {
+  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP'], ['tk', '🎫 Tickets']].forEach(([k, l]) => {
     const b = el('button', k === bpTab ? 'on' : '', l); b.onclick = () => { bpTab = k; renderBP(); }; n.append(b);
   });
   BP[bpTab](c, kit(c));
@@ -1206,7 +1206,7 @@ const BP = {
     [['💰 Economia', cfg.eco !== false, v => R().update({ eco: v })], ['🎉 Comandos de diversão', !off.fun, v => R().child('off/fun').set(v ? null : true)],
      ['🛠 Comandos de utilidades', !off.util, v => R().child('off/util').set(v ? null : true)], ['🔨 Comandos de moderação', !off.mod, v => R().child('off/mod').set(v ? null : true)],
      ['👋 Mensagem de boas-vindas', (cfg.welcome || {}).on, v => R().child('welcome/on').set(v)], ['🚪 Mensagem de despedida', (cfg.bye || {}).on, v => R().child('bye/on').set(v)],
-     ['🛡 Auto-moderação', (cfg.am || {}).on, v => R().child('am/on').set(v)], ['📈 Níveis e XP', (cfg.xp || {}).on, v => R().child('xp/on').set(v)]]
+     ['🛡 Auto-moderação', (cfg.am || {}).on, v => R().child('am/on').set(v)], ['📈 Níveis e XP', (cfg.xp || {}).on, v => R().child('xp/on').set(v)], ['🎫 Tickets', (cfg.tk || {}).on, v => R().child('tk/on').set(v)]]
       .forEach(([t, v, fn]) => d.append(k.chk(t, v, fn)));
   },
   welcome(c, k) {
@@ -1333,6 +1333,55 @@ function mdInto(box, text) {
     box.append(el(tag, null, p.slice(n, -n)));
   });
 }
+
+/* ---------- TICKETS ---------- */
+const staff = () => can('admin') || can('mod') || !!(cfg.tk && cfg.tk.role && myRoles[cfg.tk.role]);
+const curTk = () => (curChans[curChannel] || {}).ticket;
+const tkTag = t => String(t.num || 0).padStart(4, '0');
+const botMsg = (path, text) => db.ref(path).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: String(text).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
+const TK = fn => async (a, r) => !curServer || curServer === 'dm' ? '⛔ Os tickets só funcionam em servidores.' : !(cfg.tk && cfg.tk.on) ? '🎫 O sistema de tickets está desligado. O dono ativa no painel 🤖.' : fn(a, r);
+const inTicket = fn => TK(async (a, r) => { const t = curTk(); return t ? fn(t, a, r) : '⛔ Use este comando dentro de um canal de ticket.'; });
+const tkRef = () => db.ref(`channels/${curServer}/${curChannel}`);
+Object.assign(CB, {
+  '!ticket': TK(async (a, r) => {
+    const all = Object.values(curChans).filter(c => c.ticket), max = cfg.tk.max || 1, mine = all.filter(c => c.ticket.owner === me.uid && c.ticket.status !== 'closed').length;
+    if (mine >= max) return `⛔ Você já tem ${mine} ticket(s) aberto(s). Feche o atual com !fechar antes de abrir outro.`;
+    const num = 1 + Math.max(0, ...all.map(c => c.ticket.num || 0)), reason = (r || 'sem motivo informado').slice(0, 200), sid = curServer;
+    const t = { owner: me.uid, ownerName: me.name, status: 'open', num, reason }, name = 'ticket-' + tkTag(t) + '-' + (me.name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 12) || 'user');
+    const ref = db.ref('channels/' + sid).push(); await ref.set({ name, type: 'text', ticket: t, viewUsers: { [me.uid]: true } });
+    const msg = fillVars(cfg.tk.msg || '🎫 Ticket #{num} aberto por {mention}.\nMotivo: {reason}\nA equipe vai te atender em breve. Para encerrar, use !fechar.', { user: me.name }).replace(/\{num\}/g, tkTag(t)).replace(/\{reason\}/g, reason);
+    await botMsg(`messages/${sid}/${ref.key}`, msg);
+    if (cfg.tk.log) botMsg(`messages/${sid}/${cfg.tk.log}`, `🎫 Ticket #${tkTag(t)} aberto por ${me.name}. Motivo: ${reason}`);
+    setTimeout(() => selectChannel(ref.key, name), 400); return `🎫 Ticket criado: #${name}. Já abri o canal para você.`;
+  }),
+  '!fechar': inTicket(async t => {
+    if (t.status === 'closed') return 'Este ticket já está fechado.'; if (t.owner !== me.uid && !staff()) return '⛔ Só quem abriu o ticket ou a equipe pode fechá-lo.';
+    const lines = Object.values(rows).map(x => x.m).filter(m => m.text).slice(-40).map(m => `[${new Date(m.ts || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}] ${m.name}: ${m.text.replace(/\s+/g, ' ').slice(0, 120)}`);
+    await tkRef().child('ticket').update({ status: 'closed', closedBy: me.name });
+    if (cfg.tk.log) botMsg(`messages/${curServer}/${cfg.tk.log}`, `📜 Ticket #${tkTag(t)} de ${t.ownerName} fechado por ${me.name}.\nMotivo: ${t.reason}\n` + lines.join('\n'));
+    return `🔒 Ticket fechado por ${me.name}. A equipe pode usar !reabrir ou !apagar.`;
+  }),
+  '!reabrir': inTicket(async t => { if (!staff()) return '⛔ Só a equipe pode reabrir tickets.'; await tkRef().child('ticket').update({ status: 'open', closedBy: null }); return `🔓 Ticket reaberto por ${me.name}.`; }),
+  '!apagar': inTicket(async t => { if (!staff()) return '⛔ Só a equipe pode apagar tickets.'; await tkRef().remove(); return `🗑 Ticket #${tkTag(t)} apagado por ${me.name}.`; }),
+  '!adicionar': inTicket(async (t, a) => {
+    if (!staff()) return '⛔ Só a equipe pode adicionar pessoas ao ticket.'; const m = a.map(x => findMember(x)).find(Boolean); if (!m) return 'Use: !adicionar @pessoa';
+    await tkRef().child('viewUsers/' + m[0]).set(true); return `➕ ${m[1].name} foi adicionado(a) ao ticket.`;
+  }),
+  '!remover': inTicket(async (t, a) => {
+    if (!staff()) return '⛔ Só a equipe pode remover pessoas do ticket.'; const m = a.map(x => findMember(x)).find(Boolean); if (!m) return 'Use: !remover @pessoa';
+    if (m[0] === t.owner) return '⛔ Não dá para remover quem abriu o ticket.'; await tkRef().child('viewUsers/' + m[0]).remove(); return `➖ ${m[1].name} foi removido(a) do ticket.`;
+  })
+});
+const _h4 = CB['!ajuda'];
+CB['!ajuda'] = () => _h4() + (cfg.tk && cfg.tk.on ? '\n🎫 Tickets: ' + ['ticket motivo', 'fechar', 'reabrir', 'adicionar @p', 'remover @p', 'apagar'].map(x => (cfg.prefix || '!') + x).join(' · ') + ' (os 4 últimos só a equipe)' : '');
+BP.tk = (c, k) => {
+  const t = cfg.tk || {}, d = k.card('Configuração'), on_ = k.chk('Sistema de tickets ativado', t.on), mx = k.inp('Máximo de tickets abertos por pessoa (padrão 1)', t.max, 'number'), rs = el('select'), lg = el('select'), tx = el('textarea'), o0 = el('option', null, '— só administradores e moderadores —');
+  c.insertBefore(el('small', null, 'Membros abrem um canal privado com !ticket motivo. Só quem abriu, a equipe e quem for adicionado enxerga o canal.'), d); c.insertBefore(el('h2', null, '🎫 Tickets'), c.firstChild);
+  o0.value = ''; rs.append(o0); Object.entries(roles).forEach(([id, r]) => { const o = el('option', null, '🎭 ' + r.name); o.value = id; rs.append(o); }); rs.value = t.role || '';
+  k.chans(lg); lg.value = t.log || ''; tx.placeholder = '🎫 Ticket #{num} aberto por {mention}.\nMotivo: {reason}\nA equipe vai te atender em breve. Para encerrar, use !fechar.'; tx.value = t.msg || '';
+  d.append(on_, mx, el('small', null, 'Cargo da equipe de suporte (vê todos os tickets):'), rs, el('small', null, 'Canal que recebe a transcrição dos tickets fechados (opcional):'), lg, tx, el('small', null, 'Variáveis da mensagem inicial: {user} {mention} {num} {reason} {server}'));
+  k.save(d, () => R().child('tk').set({ on: on_.input.checked, max: +mx.value || null, role: rs.value, log: lg.value, msg: tx.value.slice(0, 500) }));
+};
 </script>
 </body>
 </html>
