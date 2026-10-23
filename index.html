@@ -197,6 +197,15 @@ html,body{max-width:100%;overflow-x:hidden}
   .txt{font-size:15px;line-height:1.35}
 }
 code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em}
+.catn{display:block;width:100%;text-align:left;background:none;color:var(--mute);font-size:12px;font-weight:700;padding:14px 6px 4px;letter-spacing:.3px}.catn:hover{color:var(--text)}
+.emoji{height:1.4em;width:auto;vertical-align:-.3em}.bigemo .emoji{height:3em}
+.stkimg{max-width:160px;max-height:160px;display:block;margin-top:4px}
+.xgrid{display:flex;flex-wrap:wrap;gap:10px}
+.xitem{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--rail);border-radius:8px;padding:8px;width:96px;text-align:center}
+.xitem img.stk{width:76px;height:76px;object-fit:contain}.xitem small{overflow-wrap:anywhere}
+#stk{position:absolute;bottom:52px;right:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:min(300px,86vw);max-height:260px;overflow-y:auto;z-index:5}
+#stk button{background:none;border-radius:8px;padding:4px}#stk button:hover{background:var(--hover)}#stk img{width:100%;height:80px;object-fit:contain}
+#mp img.emoji{height:22px}
 </style>
 </head>
 <body>
@@ -431,14 +440,15 @@ function selectServer(id, name) {
   clear(chanSubs); curServer = id; curChannel = null; curHome = false; $('#invite').hidden = false;
   document.querySelectorAll('.srv').forEach(b => b.classList.toggle('on', b.title === name));
   $('#sname').textContent = name; $('#addch').hidden = false;
-  roles = {}; mroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {}; cfg = {};
+  roles = {}; mroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {}; cfg = {}; curCats = {};
   db.ref('servers/' + id + '/owner').get().then(s => { serverOwner = s.val(); calcPerms(); });
   const subs = chanSubs;
   on(subs, db.ref('channels/' + id), 'value', s => { if (id !== curServer) return; curChans = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); svRefresh(); });
   on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
   on(subs, db.ref('bots/' + id), 'value', s => { bots = s.val() || {}; svRefresh(); });
-  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); bpRefresh(); });
+  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); bpRefresh(); Object.keys(rows).forEach(k => fill(k)); });
+  on(subs, db.ref('servers/' + id + '/cats'), 'value', s => { curCats = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
   on(subs, db.ref('mutes/' + id), 'value', s => { mutes = s.val() || {}; });
   on(subs, db.ref(`kicks/${id}/${me.uid}`), 'value', s => { if (s.exists()) { db.ref(`kicks/${id}/${me.uid}`).remove(); forceLeave(id, 'expulso'); } });
@@ -468,6 +478,7 @@ function selectChannel(cid, name) {
 let rows = {};
 function renderText(box, text, ts) {
   text = text.replace(/gsk_[A-Za-z0-9]{16,}/g, 'gsk_••••••••');
+  { const nn = text.match(/:[a-z0-9_]{2,32}:/gi); box.classList.toggle('bigemo', !!nn && nn.length <= 5 && /^(\s*:[a-z0-9_]{2,32}:\s*)+$/i.test(text) && nn.every(n => Object.values(cfg.emojis || {}).some(x => x.name === n.slice(1, -1).toLowerCase()))); }
   box.replaceChildren(); let ping = false;
   text.split(/(https?:\/\/[^\s<]+|@\S+)/).forEach((p, i) => {
     if (!p) return;
@@ -489,7 +500,8 @@ function react(key, emo) {
 }
 function fill(key) {
   const r = rows[key], m = r.m;
-  const ping = renderText(r.txt, m.text, m.ts);
+  const ping = renderText(r.txt, m.text || '', m.ts);
+  if (m.stk) { const st = (cfg.stickers || {})[m.stk]; if (st) { const im = el('img', 'stkimg'); im.src = st.img; im.alt = st.name; im.title = st.name; r.txt.append(im); } else r.txt.append(el('i', null, '(figurinha removida)')); }
   if (m.edited) r.txt.append(el('span', 'edited', ' (editado)'));
   r.row.classList.toggle('ping', ping && m.uid !== me.uid);
   r.rx.replaceChildren();
@@ -517,7 +529,7 @@ function addMsg(key, m) {
     ed.title = 'Editar'; del.title = 'Apagar';
     ed.onclick = () => { const t = prompt('Editar mensagem:', rows[key].m.text); if (t && t.trim()) db.ref(`messages/${curServer}/${curChannel}/${key}`).update({ text: t.trim().slice(0, 4000), edited: true }); };
     del.onclick = () => { if (confirm('Apagar esta mensagem?')) db.ref(`messages/${curServer}/${curChannel}/${key}`).remove(); };
-    if (m.uid === me.uid && !m.bot) tools.append(ed); tools.append(del);
+    if (m.uid === me.uid && !m.bot && !m.stk) tools.append(ed); tools.append(del);
   }
   row.append(tools); list.append(row);
   rows[key] = { row, txt, rx, m }; fill(key);
@@ -579,8 +591,16 @@ $('#s-save').onclick = () => {
 
 /* ---------- emojis ---------- */
 const EMOJIS = '😀😁😂🤣😊😍😘😎🤔😢😭😡👍👎👏🙏💪🔥✨🎉❤️💚💔👀🤝🙌😴🤯🥳😅🙃😉😇🤩😱🍕☕🎮'.match(/\p{Extended_Pictographic}\uFE0F?/gu);
-EMOJIS.forEach(e => { const b = el('button', null, e); b.type = 'button'; b.onclick = () => { const x = $('#box'); x.value += e; x.focus(); }; $('#picker').append(b); });
-$('#emo').onclick = () => { $('#picker').hidden = !$('#picker').hidden; };
+function renderPicker() {
+  const p = $('#picker'); p.replaceChildren();
+  EMOJIS.forEach(e => { const b = el('button', null, e); b.type = 'button'; b.onclick = () => { const x = $('#box'); x.value += e; x.focus(); }; p.append(b); });
+  const cu = Object.values(cfg.emojis || {});
+  if (cu.length && curServer && curServer !== 'dm') {
+    const h = el('small', null, 'Deste servidor'); h.style.gridColumn = '1/-1'; p.append(h);
+    cu.forEach(o => { const b = el('button'), im = el('img', 'emoji'); b.type = 'button'; im.src = o.img; im.style.height = '26px'; b.title = ':' + o.name + ':'; b.append(im); b.onclick = () => { const x = $('#box'); x.value += ':' + o.name + ': '; x.focus(); }; p.append(b); });
+  }
+}
+$('#emo').onclick = () => { $('#stk').hidden = true; renderPicker(); $('#picker').hidden = !$('#picker').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#emo,#picker')) $('#picker').hidden = true; });
 
 /* ---------- amigos, DMs e convites ---------- */
@@ -769,15 +789,26 @@ function calcPerms() {
   Object.keys(myRoles).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
   $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; $('#bpbtn').hidden = !curServer || curServer === 'dm'; renderChans();
 }
+let curCats = {};
+const byPos = (x, y) => (x[1].pos ?? 1e9) - (y[1].pos ?? 1e9);
+const gOf = x => x.cat && curCats[x.cat] ? x.cat : null;
+let collapsed = new Set(); try { collapsed = new Set(JSON.parse(localStorage.getItem('concord_cc') || '[]')); } catch (e) {}
 function renderChans() {
   if (curHome || !curServer || curServer === 'dm') return;
   const box = $('#chans'); box.replaceChildren();
-  const vis = Object.entries(curChans).filter(([, c]) => canSee(c));
-  vis.forEach(([cid, c]) => {
+  const vis = Object.entries(curChans).filter(([, c]) => canSee(c)).sort(byPos);
+  const btn = ([cid, c]) => {
     const v = c.type === 'voice', b = el('button', 'ch' + (cid === curChannel ? ' on' : ''), (c.ticket ? (c.ticket.status === 'closed' ? '🔒 ' : '🎫 ') : v ? '🔊 ' : '# ') + c.name + (c.view && !c.ticket ? ' 🔒' : ''));
-    b.onclick = () => v ? joinCall('v_' + curServer + '_' + cid) : selectChannel(cid, c.name); box.append(b);
+    b.onclick = () => v ? joinCall('v_' + curServer + '_' + cid) : selectChannel(cid, c.name); return b;
+  };
+  vis.filter(([, c]) => !gOf(c)).forEach(x => box.append(btn(x)));
+  Object.entries(curCats).sort(byPos).forEach(([id, cat]) => {
+    const list = vis.filter(([, c]) => gOf(c) === id); if (!list.length && !can('channels')) return;
+    const h = el('button', 'catn', (collapsed.has(id) ? '▸ ' : '▾ ') + cat.name.toUpperCase());
+    h.onclick = () => { collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); try { localStorage.setItem('concord_cc', JSON.stringify([...collapsed])); } catch (e) {} renderChans(); };
+    box.append(h); if (!collapsed.has(id)) list.forEach(x => box.append(btn(x)));
   });
-  const f1 = vis.find(([, c]) => c.type !== 'voice');
+  const f1 = vis.find(([, c]) => c.type !== 'voice' && !c.ticket);
   if (!canSee(curChans[curChannel]) && f1) selectChannel(f1[0], f1[1].name);
 }
 const svRefresh = () => { if (!$('#sv').hidden) renderSV(); };
@@ -787,10 +818,10 @@ $('#svx').onclick = () => $('#sv').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sv').hidden = true; });
 function renderSV() {
   const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
-  const tabs = [['general', 'Geral', true], ['panel', '🤖 Painel do ConcordBot', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots extras', isOwner()]].filter(t => t[2]);
+  const tabs = [['general', 'Geral', true], ['panel', '🤖 Painel do ConcordBot', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots extras', isOwner()], ['expr', '🎭 Emojis e figurinhas', isOwner()]].filter(t => t[2]);
   if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
   tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { if (k === 'panel') { $('#sv').hidden = true; return openBP(); } svTab = k; editCh = null; renderSV(); }; n.append(b); });
-  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots })[svTab](c);
+  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots, expr: svExpr })[svTab](c);
 }
 function roleChecks(title, sel) {
   const box = el('div'), row = el('div', 'chk'), set = { ...(sel || {}) }; box.append(el('small', null, title));
@@ -801,26 +832,63 @@ function roleChecks(title, sel) {
   });
   box.append(row); return { box, get: () => Object.keys(set).length ? set : null };
 }
+function catOptions(sel, cur) {
+  const o0 = el('option', null, '— Sem categoria —'); o0.value = ''; sel.append(o0);
+  Object.entries(curCats).sort(byPos).forEach(([id, x]) => { const o = el('option', null, '📁 ' + x.name); o.value = id; sel.append(o); });
+  sel.value = cur && curCats[cur] ? cur : '';
+}
+function moveCh(id, dir) {
+  const g = Object.entries(curChans).filter(([, x]) => gOf(x) === gOf(curChans[id])).sort(byPos).map(x => x[0]), i = g.indexOf(id), j = i + dir;
+  if (j < 0 || j >= g.length) return; [g[i], g[j]] = [g[j], g[i]];
+  const u = {}; g.forEach((k, n) => u[`channels/${curServer}/${k}/pos`] = n); db.ref().update(u);
+}
 function svChannels(c) {
-  const e = (editCh && curChans[editCh]) || {}, f = el('div', 'card2'), nm = el('input'), tp = el('select');
+  const e = (editCh && curChans[editCh]) || {}, f = el('div', 'card2'), nm = el('input'), tp = el('select'), cs = el('select');
   c.append(el('h2', null, 'Canais')); f.append(el('h3', null, editCh ? 'Editar canal' : 'Criar canal'));
   nm.placeholder = 'nome-do-canal'; nm.value = e.name || '';
   [['text', '# Texto'], ['voice', '🔊 Voz e vídeo']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; tp.append(o); }); tp.value = e.type || 'text';
+  catOptions(cs, e.cat);
   const v = roleChecks('Quem pode ver este canal (nenhum marcado = todos)', e.view), w = roleChecks('Quem pode enviar mensagens (nenhum marcado = todos)', e.send);
   const ok = el('button', 'btn', editCh ? 'Salvar canal' : 'Criar canal');
   ok.onclick = () => {
     const name = nm.value.trim().toLowerCase().replace(/\s+/g, '-').slice(0, 30); if (!name) return toast('Dê um nome ao canal.');
-    const d = { name, type: tp.value, view: v.get(), send: tp.value === 'voice' ? null : w.get() };
-    editCh ? db.ref(`channels/${curServer}/${editCh}`).set(d) : db.ref('channels/' + curServer).push(d); editCh = null; toast('Canal salvo!'); renderSV();
+    const d = { name, type: tp.value, cat: cs.value || null, view: v.get(), send: tp.value === 'voice' ? null : w.get() };
+    if (editCh) db.ref(`channels/${curServer}/${editCh}`).update(d);
+    else { d.pos = 1 + Math.max(-1, ...Object.values(curChans).filter(x => gOf(x) === (d.cat || null)).map(x => x.pos ?? 0)); db.ref('channels/' + curServer).push(d); }
+    editCh = null; toast('Canal salvo!'); renderSV();
   };
-  f.append(nm, tp, v.box, w.box, ok); c.append(f);
-  Object.entries(curChans).forEach(([cid, ch]) => {
-    const d = el('div', 'card2'), r = el('div', 'row'), t = el('b', null, (ch.type === 'voice' ? '🔊 ' : '# ') + ch.name + (ch.view ? ' 🔒' : '')); t.style.flex = 1;
-    const ed = el('button', 'icon', '✏️'), del = el('button', 'icon', '🗑');
-    ed.onclick = () => { editCh = cid; renderSV(); };
-    del.onclick = () => confirm('Apagar #' + ch.name + '?') && db.ref(`channels/${curServer}/${cid}`).remove();
-    r.append(t, ed, del); d.append(r); c.append(d);
+  f.append(nm, tp, cs, v.box, w.box, ok); c.append(f);
+  if (isOwner()) svCats(c);
+  c.append(el('h3', null, 'Organizar canais'), el('small', null, 'Use ⬆ ⬇ para mudar a ordem e o menu para mover o canal de categoria.'));
+  [[null, 'Sem categoria'], ...Object.entries(curCats).sort(byPos).map(([id, x]) => [id, x.name])].forEach(([gid, gname]) => {
+    const list = Object.entries(curChans).filter(([, x]) => gOf(x) === gid).sort(byPos); if (!list.length) return;
+    const d = el('div', 'card2'); d.append(el('small', null, gname.toUpperCase()));
+    list.forEach(([cid, ch], i) => {
+      const r = el('div', 'row'), t = el('b', null, (ch.ticket ? '🎫 ' : ch.type === 'voice' ? '🔊 ' : '# ') + ch.name + (ch.view ? ' 🔒' : '')), sel = el('select');
+      const ib = (ic, ti, fn, dis) => { const b = el('button', 'icon', ic); b.title = ti; b.disabled = !!dis; b.onclick = fn; return b; };
+      t.style.flex = 1; catOptions(sel, ch.cat); sel.style.cssText = 'width:auto;max-width:120px;padding:6px';
+      sel.onchange = () => { const tg = sel.value || null; db.ref(`channels/${curServer}/${cid}`).update({ cat: tg, pos: 1 + Math.max(-1, ...Object.values(curChans).filter(x => gOf(x) === tg).map(x => x.pos ?? 0)) }); };
+      r.append(t, sel, ib('⬆', 'Subir', () => moveCh(cid, -1), i === 0), ib('⬇', 'Descer', () => moveCh(cid, 1), i === list.length - 1), ib('✏️', 'Editar', () => { editCh = cid; renderSV(); }),
+        ib('🗑', 'Apagar', () => confirm('Apagar #' + ch.name + '?') && db.ref(`channels/${curServer}/${cid}`).remove()));
+      d.append(r);
+    });
+    c.append(d);
   });
+}
+function svCats(c) {
+  const d = el('div', 'card2'), nm = el('input'), add = el('button', 'btn', 'Criar categoria'), S = () => db.ref('servers/' + curServer + '/cats'), ids = Object.entries(curCats).sort(byPos).map(x => x[0]);
+  d.append(el('h3', null, 'Categorias'), nm, add); nm.placeholder = 'Nome da categoria (ex.: Geral)'; nm.maxLength = 30;
+  add.onclick = () => { if (!nm.value.trim()) return toast('Dê um nome à categoria.'); S().push({ name: nm.value.trim(), pos: 1 + Math.max(-1, ...Object.values(curCats).map(x => x.pos ?? 0)) }).catch(e => toast('Erro: ' + e.message)); nm.value = ''; };
+  ids.forEach((id, i) => {
+    const r = el('div', 'row'), t = el('span', null, '📁 ' + curCats[id].name), ib = (ic, fn, dis) => { const b = el('button', 'icon', ic); b.disabled = !!dis; b.onclick = fn; return b; };
+    const swap = dir => { const g = [...ids]; [g[i], g[i + dir]] = [g[i + dir], g[i]]; const u = {}; g.forEach((k, n) => u[k + '/pos'] = n); S().update(u); };
+    t.style.flex = 1;
+    r.append(t, ib('⬆', () => swap(-1), i === 0), ib('⬇', () => swap(1), i === ids.length - 1),
+      ib('✏️', () => { const n = prompt('Novo nome da categoria:', curCats[id].name); if (n && n.trim()) S().child(id).update({ name: n.trim().slice(0, 30) }); }),
+      ib('🗑', () => { if (!confirm('Apagar a categoria? Os canais dela ficam sem categoria.')) return; const u = {}; Object.entries(curChans).forEach(([cid, x]) => { if (x.cat === id) u[`channels/${curServer}/${cid}/cat`] = null; }); u[`servers/${curServer}/cats/${id}`] = null; db.ref().update(u); }));
+    d.append(r);
+  });
+  c.append(d);
 }
 const PERMS = [['admin', 'Administrador (todas as permissões)'], ['channels', 'Gerenciar canais'], ['msgs', 'Apagar mensagens de outros'], ['mod', 'Moderar membros (expulsar, banir, silenciar, limpar)']];
 function svRoles(c) {
@@ -890,7 +958,14 @@ function runBots(text) {
 const sessionStart = Date.now();
 const mp = el('div'); mp.id = 'mp'; mp.hidden = true; document.querySelector('.cwrap').append(mp);
 $('#box').addEventListener('input', e => {
-  const x = e.target, m = x.value.match(/@([^\s@]*)$/); mp.replaceChildren();
+  const x = e.target;
+  const em = x.value.match(/(?:^|\s):([a-z0-9_]{2,})$/i);
+  if (em && curServer && curServer !== 'dm') {
+    mp.replaceChildren(); const q = em[1].toLowerCase(), hit = Object.values(cfg.emojis || {}).filter(o => o.name.startsWith(q)).slice(0, 7);
+    hit.forEach(o => { const b = el('button'), im = el('img', 'emoji'); b.type = 'button'; im.src = o.img; b.append(im, el('span', null, ':' + o.name + ':')); b.onclick = () => { x.value = x.value.replace(/:([a-z0-9_]{2,})$/i, ':' + o.name + ': '); mp.hidden = true; x.focus(); }; mp.append(b); });
+    mp.hidden = !hit.length; return;
+  }
+  const m = x.value.match(/@([^\s@]*)$/); mp.replaceChildren();
   if (!m || !curServer || curServer === 'dm') { mp.hidden = true; return; }
   const q = m[1].toLowerCase(), list = [];
   list.push(['ConcordBot', 'Pergunte algo à IA']); if (can('admin')) list.push(['everyone', 'Notifica todos'], ['here', 'Notifica quem está online']);
@@ -1328,7 +1403,7 @@ Object.assign(CB, {
 function mdInto(box, text) {
   text.split(/(\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\*[^*\n]+\*)/).forEach((p, i) => {
     if (!p) return;
-    if (i % 2 === 0) { box.append(document.createTextNode(p)); return; }
+    if (i % 2 === 0) { emojiInto(box, p); return; }
     const tag = p.startsWith('**') ? 'b' : p.startsWith('__') ? 'u' : p.startsWith('~~') ? 's' : p[0] === '`' ? 'code' : 'i', n = tag === 'i' || tag === 'code' ? 1 : 2;
     box.append(el(tag, null, p.slice(n, -n)));
   });
@@ -1382,6 +1457,59 @@ BP.tk = (c, k) => {
   d.append(on_, mx, el('small', null, 'Cargo da equipe de suporte (vê todos os tickets):'), rs, el('small', null, 'Canal que recebe a transcrição dos tickets fechados (opcional):'), lg, tx, el('small', null, 'Variáveis da mensagem inicial: {user} {mention} {num} {reason} {server}'));
   k.save(d, () => R().child('tk').set({ on: on_.input.checked, max: +mx.value || null, role: rs.value, log: lg.value, msg: tx.value.slice(0, 500) }));
 };
+
+/* ---------- emojis e figurinhas personalizados ---------- */
+function emojiInto(box, text) {
+  text.split(/(:[a-z0-9_]{2,32}:)/i).forEach((p, i) => {
+    if (!p) return;
+    const o = i % 2 ? Object.values(cfg.emojis || {}).find(x => x.name === p.slice(1, -1).toLowerCase()) : null;
+    if (o) { const im = el('img', 'emoji'); im.src = o.img; im.alt = p; im.title = p; box.append(im); } else box.append(document.createTextNode(p));
+  });
+}
+function fitImg(f, z, cb) {
+  if (!f) return; if (!f.type.startsWith('image/')) return toast('Escolha um arquivo de imagem.');
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const c = document.createElement('canvas'), k = Math.min(z / img.width, z / img.height); c.width = c.height = z;
+    const w = img.width * k, h = img.height * k; c.getContext('2d').drawImage(img, (z - w) / 2, (z - h) / 2, w, h); URL.revokeObjectURL(url); cb(c.toDataURL('image/png'));
+  };
+  img.onerror = () => toast('Não consegui abrir essa imagem.'); img.src = url;
+}
+function svExpr(c) {
+  c.append(el('h2', null, '🎭 Emojis e figurinhas'));
+  [['emojis', 'Emojis personalizados', 64, 50, 'Use no chat escrevendo :nome:', 'nome (letras, números e _)'], ['stickers', 'Figurinhas', 128, 15, 'Aparecem no botão 🖼 ao lado da caixa de mensagem', 'nome da figurinha']].forEach(([key, title, size, max, hint, ph]) => {
+    const items = cfg[key] || {}, d = el('div', 'card2'), nm = el('input'), fi = el('input'), add = el('button', 'btn', 'Adicionar'), g = el('div', 'xgrid');
+    d.append(el('h3', null, `${title} (${Object.keys(items).length}/${max})`), el('small', null, hint + `. A imagem é reduzida para ${size}×${size}.`));
+    nm.placeholder = ph; nm.maxLength = 32; fi.type = 'file'; fi.accept = 'image/*'; d.append(nm, fi, add);
+    add.onclick = () => {
+      const name = nm.value.trim().toLowerCase().replace(key === 'emojis' ? /[^a-z0-9_]/g : /[^a-z0-9_ áàâãéêíóôõúç-]/g, '');
+      if (name.length < 2) return toast('O nome precisa ter ao menos 2 caracteres.'); if (Object.values(items).some(x => x.name === name)) return toast('Já existe um com esse nome.');
+      if (Object.keys(items).length >= max) return toast('Limite de ' + max + ' atingido.'); if (!fi.files[0]) return toast('Escolha uma imagem.');
+      fitImg(fi.files[0], size, img => R().child(key).push({ name, img }).then(() => toast('Adicionado!')).catch(e => toast('Erro: ' + e.message)));
+    };
+    Object.entries(items).forEach(([id, x]) => {
+      const w = el('div', 'xitem'), im = el('img', key === 'emojis' ? 'emoji' : 'stk'), del = el('button', 'icon', '🗑'); im.src = x.img; im.alt = x.name;
+      if (key === 'emojis') im.style.height = '40px'; del.onclick = () => R().child(key + '/' + id).remove(); w.append(im, el('small', null, key === 'emojis' ? ':' + x.name + ':' : x.name), del); g.append(w);
+    });
+    d.append(g); c.append(d);
+  });
+}
+function sendSticker(id) {
+  if (!curChannel || !curServer || curServer === 'dm') return;
+  if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
+  db.ref(`messages/${curServer}/${curChannel}`).push({ uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: '', stk: id, ts: firebase.database.ServerValue.TIMESTAMP });
+}
+const stk = el('div'), sb = el('button', 'icon', '🖼'); stk.id = 'stk'; stk.hidden = true; sb.id = 'stkbtn'; sb.title = 'Figurinhas';
+document.querySelector('.cwrap').append(stk); $('#emo').before(sb);
+sb.onclick = () => {
+  $('#picker').hidden = true; stk.replaceChildren();
+  const list = Object.entries(cfg.stickers || {}), msg = t => { const m = el('small', null, t); m.style.gridColumn = '1/-1'; stk.append(m); };
+  if (!curServer || curServer === 'dm') msg('Figurinhas só funcionam dentro de servidores.');
+  else if (!list.length) msg('Este servidor ainda não tem figurinhas. O dono adiciona em ⚙ > Emojis e figurinhas.');
+  list.forEach(([id, x]) => { const b = el('button'), im = el('img'); b.type = 'button'; b.title = x.name; im.src = x.img; b.append(im); b.onclick = () => { stk.hidden = true; sendSticker(id); }; stk.append(b); });
+  stk.hidden = !stk.hidden;
+};
+document.addEventListener('click', e => { if (!e.target.closest('#stkbtn,#stk')) stk.hidden = true; });
 </script>
 </body>
 </html>
