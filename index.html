@@ -226,10 +226,29 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .attimg,.gifimg{display:block;max-width:min(420px,100%);max-height:340px;border-radius:10px;margin-top:6px;cursor:zoom-in}
 .gifimg{cursor:default;max-height:260px}
 .tenorf{display:block;border:0;border-radius:10px;margin-top:6px;width:min(360px,100%);aspect-ratio:1/1}
+#lb{position:fixed;inset:0;background:#000d;z-index:40;display:grid;place-items:center;cursor:zoom-out}#lb img{max-width:94vw;max-height:90vh;border-radius:8px}
 #gifp{position:absolute;bottom:52px;right:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:8px;width:min(340px,92vw);max-height:360px;overflow-y:auto;z-index:5;display:grid;gap:6px}
 #gifp .gg{display:grid;grid-template-columns:1fr 1fr;gap:6px}#gifp .gg button{background:var(--rail);border-radius:8px;padding:0;overflow:hidden;min-height:70px}
 #gifp .gg img{width:100%;height:100%;object-fit:cover;display:block;min-height:70px}#gifp small{color:var(--mute)}
-#lb{position:fixed;inset:0;background:#000d;z-index:40;display:grid;place-items:center;cursor:zoom-out}#lb img{max-width:94vw;max-height:90vh;border-radius:8px}
+#grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+#grid .tile{position:relative;width:auto;height:auto;aspect-ratio:16/9;background:var(--side);border-radius:12px;overflow:hidden}
+.tile .tav{position:absolute;inset:0;display:grid;place-items:center}
+.tile .tav .av{width:84px;height:84px;font-size:34px}
+.tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.tile.novid video{visibility:hidden}
+.tile.screen video{object-fit:contain}
+.tile.me.cam video{transform:scaleX(-1)}
+.tile .tname{position:absolute;left:8px;bottom:6px;font-size:12px;background:#000a;padding:1px 6px;border-radius:4px;z-index:2;color:#fff}
+.tile .tbar{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:3}
+.tbtn{background:#000b;color:#fff;border-radius:6px;width:30px;height:30px;font-size:15px}.tbtn:hover{background:#000}
+#grid.spot{display:flex;flex-wrap:wrap;justify-content:center}
+#grid.spot .tile{width:150px;height:92px;aspect-ratio:auto}
+#grid.spot .tile:not(.big) .tav .av{width:44px;height:44px;font-size:18px}
+#grid.spot .tile.big{order:-1;width:100%;height:min(62vh,560px)}
+.tile:fullscreen{width:100vw!important;height:100vh!important;border-radius:0;aspect-ratio:auto;background:#000}
+.tile.fs{position:fixed!important;inset:0;z-index:35;width:auto!important;height:auto!important;border-radius:0;aspect-ratio:auto;background:#000}
+.tile:fullscreen video,.tile.fs video{object-fit:contain}
+@media(max-width:700px){#grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}#grid.spot .tile.big{height:min(46vh,420px)}}
 </style>
 </head>
 <body>
@@ -734,22 +753,56 @@ async function callDM(id, name) {
 const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 function tile(id, name, stream, mine) {
   let t = $('#t-' + id);
-  if (!t) { t = el('div', 'tile'); t.id = 't-' + id; t.append(el('video'), el('span', null, name)); $('#grid').append(t); }
-  const v = t.firstChild; v.autoplay = true; v.playsInline = true; v.dataset.me = mine ? '1' : '';
-  v.muted = !!mine || !!(call && call.deaf); v.srcObject = stream; v.play().catch(() => {});
+  if (!t) {
+    t = el('div', 'tile novid' + (mine ? ' me' : '')); t.id = 't-' + id;
+    const v = el('video'), av = el('div', 'tav'), nm = el('span', 'tname', name), bar = el('div', 'tbar'), bx = el('button', 'tbtn', '⤢'), fs = el('button', 'tbtn', '⛶');
+    bx.title = 'Ampliar'; fs.title = 'Tela cheia'; bx.type = fs.type = 'button';
+    bx.onclick = e => { e.stopPropagation(); call.focus = call.focus === id ? null : id; updateTiles(); };
+    fs.onclick = e => { e.stopPropagation(); goFull(t); }; t.ondblclick = () => goFull(t);
+    bar.append(bx, fs); t.append(av, v, nm, bar); $('#grid').append(t);
+    Promise.resolve(mine ? me : getUser(id)).then(u => av.replaceChildren(avatar0(u || { name: '?' }))).catch(() => {});
+  }
+  const v = t.querySelector('video'); v.autoplay = true; v.playsInline = true; v.dataset.me = mine ? '1' : '';
+  v.muted = !!mine || !!(call && call.deaf); v.srcObject = stream; v.play().catch(() => {}); updateTiles();
 }
+function updateTiles() {
+  if (!call) return;
+  const grid = $('#grid'), tiles = [...grid.querySelectorAll('.tile')], vs = call.vs || {}; let shareId = null;
+  tiles.forEach(t => {
+    const id = t.id.slice(2), k = id === 'me' ? call.kind : vs[id];
+    t.classList.toggle('novid', !k); t.classList.toggle('screen', k === 'screen'); t.classList.toggle('cam', k === 'cam'); if (k === 'screen' && !shareId) shareId = id;
+  });
+  const focus = call.focus && tiles.some(t => t.id === 't-' + call.focus) ? call.focus : shareId;
+  tiles.forEach(t => { const big = t.id === 't-' + focus, b = t.querySelector('.tbtn'); t.classList.toggle('big', big); if (b) { b.textContent = big ? '⤡' : '⤢'; b.title = big ? 'Reduzir' : 'Ampliar'; } });
+  grid.classList.toggle('spot', !!focus);
+}
+function shareVState(kind) {
+  if (!call) return; const r = db.ref(`calls/${call.room}/vstate/${me.uid}`);
+  if (kind) { r.set(kind); r.onDisconnect().remove(); } else r.remove(); updateTiles();
+}
+function goFull(t) {
+  if (document.fullscreenElement) { document.exitFullscreen(); return; }
+  if (t.classList.contains('fs')) { t.classList.remove('fs'); return; }
+  const v = t.querySelector('video');
+  if (t.requestFullscreen) t.requestFullscreen().catch(() => t.classList.add('fs'));
+  else if (t.webkitRequestFullscreen) t.webkitRequestFullscreen();
+  else if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+  else t.classList.add('fs');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.tile.fs').forEach(t => t.classList.remove('fs')); });
 async function joinCall(room) {
   if (call) leaveCall();
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
   catch (e) { return toast('Permita o microfone (a call só funciona em https ou localhost).'); }
-  call = { room, pcs: {}, stream, vt: null, kind: null, deaf: false, subs: [] };
+  call = { room, pcs: {}, stream, vt: null, kind: null, deaf: false, subs: [], vs: {}, focus: null };
   ['#bmic', '#bdeaf'].forEach(b => $(b).className = ''); ['#bcam', '#bscr'].forEach(b => $(b).className = '');
   $('#call').hidden = false; tile('me', me.name + ' (você)', stream, true);
   const base = db.ref('calls/' + room), mine = base.child('peers/' + me.uid);
   mine.set(me.name); mine.onDisconnect().remove();
   on(call.subs, base.child('sig/' + me.uid), 'child_added', async s => { const m = s.val(); s.ref.remove(); try { await onSig(m); } catch (e) { console.warn(e); } });
   on(call.subs, base.child('peers'), 'child_removed', s => closePeer(s.key));
+  on(call.subs, base.child('vstate'), 'value', s => { call.vs = s.val() || {}; updateTiles(); });
   const ex = (await base.child('peers').get()).val() || {};
   Object.entries(ex).forEach(([id, n]) => id !== me.uid && connect(id, n, true));
 }
@@ -774,11 +827,11 @@ async function onSig(m) {
   } else if (m.t === 'answer' && p) { await p.pc.setRemoteDescription(m.d); flush(p); }
   else if (m.t === 'ice' && p) p.pc.remoteDescription ? p.pc.addIceCandidate(m.c).catch(() => {}) : p.q.push(m.c);
 }
-function closePeer(id) { const p = call && call.pcs[id]; if (!p) return; p.pc.close(); delete call.pcs[id]; const t = $('#t-' + id); if (t) t.remove(); }
+function closePeer(id) { const p = call && call.pcs[id]; if (!p) return; p.pc.close(); delete call.pcs[id]; const t = $('#t-' + id); if (t) t.remove(); if (call.focus === id) call.focus = null; updateTiles(); }
 function leaveCall() {
   if (!call) return; const c = call; call = null; clear(c.subs);
   Object.values(c.pcs).forEach(p => p.pc.close()); c.stream.getTracks().forEach(t => t.stop()); if (c.vt) c.vt.stop();
-  db.ref(`calls/${c.room}/peers/${me.uid}`).remove(); db.ref(`calls/${c.room}/sig/${me.uid}`).remove();
+  db.ref(`calls/${c.room}/peers/${me.uid}`).remove(); db.ref(`calls/${c.room}/sig/${me.uid}`).remove(); db.ref(`calls/${c.room}/vstate/${me.uid}`).remove();
   $('#grid').replaceChildren(); $('#call').hidden = true;
 }
 async function setVideo(kind) {
@@ -789,7 +842,7 @@ async function setVideo(kind) {
     const s = kind === 'cam' ? await navigator.mediaDevices.getUserMedia({ video: true }) : await navigator.mediaDevices.getDisplayMedia({ video: true });
     t = s.getVideoTracks()[0]; t.onended = () => setVideo(null); call.stream.addTrack(t);
   } catch (e) { toast('Não foi possível iniciar o vídeo.'); }
-  call.vt = t; call.kind = t ? kind : null; tile('me', me.name + ' (você)', call.stream, true);
+  call.vt = t; call.kind = t ? kind : null; tile('me', me.name + ' (você)', call.stream, true); shareVState(call.kind);
   Object.values(call.pcs).forEach(p => p.pc.getTransceivers().find(x => x.receiver.track.kind === 'video').sender.replaceTrack(t));
   $('#bcam').className = call.kind === 'cam' ? 'on' : ''; $('#bscr').className = call.kind === 'screen' ? 'on' : '';
 }
@@ -1420,7 +1473,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.25-midia';
+const BUILD = '2026.10.27-calls';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -1849,6 +1902,7 @@ function mediaInto(box, m) {
     box.append(g);
   }
 }
+
 
 /* ---------- GIFs do KLIPY (o Tenor encerrou a API em 30/06/2026) ---------- */
 const KLIPY_LINK = /https?:\/\/(?:www\.)?klipy\.com\/(?:[\w-]+\/)?gifs?\/([\w-]+)/i;
