@@ -215,6 +215,21 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .ch.unread{color:var(--text);font-weight:700}
 .ch .nb,.u .nb{position:static;float:right;margin-top:3px;border:0}
 .u .nb{float:none;margin-left:6px}
+.newsw{max-width:720px;margin:0 auto;padding-bottom:20px}
+.post{background:var(--side);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 16px}
+.post h3{margin:10px 0 6px;font-size:18px}.post .meta{display:flex;align-items:center;gap:8px;color:var(--mute);font-size:13px}
+.post .meta .av{width:32px;height:32px}.postimg{max-width:100%;border-radius:10px;margin-top:10px;display:block}
+.offtag{background:var(--green);color:var(--ink);font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px}
+.newsw .card2{margin:12px 16px}
+#attprev{display:flex;align-items:center;gap:10px;background:var(--hover);border-radius:8px;padding:8px 10px;margin-bottom:6px}
+#attprev img{height:56px;max-width:90px;object-fit:cover;border-radius:6px}#attprev span{flex:1;font-size:13px;color:var(--mute)}
+.attimg,.gifimg{display:block;max-width:min(420px,100%);max-height:340px;border-radius:10px;margin-top:6px;cursor:zoom-in}
+.gifimg{cursor:default;max-height:260px}
+.tenorf{display:block;border:0;border-radius:10px;margin-top:6px;width:min(360px,100%);aspect-ratio:1/1}
+#gifp{position:absolute;bottom:52px;right:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:8px;width:min(340px,92vw);max-height:360px;overflow-y:auto;z-index:5;display:grid;gap:6px}
+#gifp .gg{display:grid;grid-template-columns:1fr 1fr;gap:6px}#gifp .gg button{background:var(--rail);border-radius:8px;padding:0;overflow:hidden;min-height:70px}
+#gifp .gg img{width:100%;height:100%;object-fit:cover;display:block;min-height:70px}#gifp small{color:var(--mute)}
+#lb{position:fixed;inset:0;background:#000d;z-index:40;display:grid;place-items:center;cursor:zoom-out}#lb img{max-width:94vw;max-height:90vh;border-radius:8px}
 </style>
 </head>
 <body>
@@ -245,7 +260,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <div class="head"><button class="icon mob" id="menu" title="Menu">☰</button><span id="cname"># selecione um servidor</span><button class="icon" id="addch" title="Novo canal" hidden>＋</button><button class="icon mob" id="memb" title="Membros">👥</button></div>
     <div id="call" hidden><div id="grid"></div><div class="ctl"><button id="bmic" title="Microfone">🎤</button><button id="bdeaf" title="Ensurdecer">🎧</button><button id="bcam" title="Câmera">📷</button><button id="bscr" title="Compartilhar tela">🖥</button><button id="bend" class="off" title="Sair da call">📞</button></div></div>
     <div id="msgs"><div class="empty">Crie um servidor ou entre em um com um código de convite.</div></div>
-    <div class="compose"><div class="cwrap"><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><div id="picker" hidden></div></div><div id="typing"></div></div>
+    <div class="compose"><div id="attprev" hidden></div><div class="cwrap"><input type="file" id="fileinp" accept="image/*" hidden><button class="icon" id="attbtn" title="Enviar imagem (arquivo ou galeria)">📎</button><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><button class="icon" id="sendbtn" title="Enviar">➤</button><div id="picker" hidden></div></div><div id="typing"></div></div>
   </main>
   <aside class="mem" id="mem"></aside>
 </div>
@@ -267,6 +282,8 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 
 <div id="bp" hidden><nav class="svn" id="bpn"></nav><div class="svc" id="bpc"></div><button class="icon svx" id="bpx" title="Fechar">✕</button></div>
 
+<div id="lb" hidden><img alt=""></div>
+
 <dialog id="pf"><div id="pf-body"></div><form method="dialog"><button class="btn ghost">Fechar</button></form></dialog>
 
 <dialog id="st">
@@ -281,6 +298,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <label class="chk"><input type="checkbox" class="sw" id="n-sound"><span>Sons de notificação</span></label>
     <label class="chk"><input type="checkbox" class="sw" id="n-browser"><span>Notificações do navegador (com o Concord aberto em segundo plano)</span></label>
     <label class="chk"><input type="checkbox" class="sw" id="n-mo"><span>Em servidores, avisar só quando me mencionarem</span></label>
+    <h3>🆔 Seu ID</h3><small>Toque para copiar. É usado para virar administrador do Concord.</small><input id="s-uid" readonly>
     <select id="s-status"><option value="online">Online</option><option value="idle">Ausente</option><option value="dnd">Não perturbe</option></select>
     <h3><span class="nitro">✦</span>Concord Nitro (grátis)</h3>
     <small>Nitro ativo: selo ✦, nome com cor ou degradê, mensagens de até 4000 caracteres e imagens/GIFs por link.</small>
@@ -381,7 +399,7 @@ async function start(u) {
   me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0, tagSid: '' };
   $('#auth').hidden = true; $('#app').hidden = false; errBox('');
   try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0, tagSid: p.tagSid || '' }); } catch (e) {}
-  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify();
+  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify(); initNews();
   on(serverSubs, db.ref('.info/connected'), 'value', c => {
     if (!c.val()) return;
     const r = db.ref('presence/' + me.uid); r.onDisconnect().remove(); r.set(me.status);
@@ -503,8 +521,15 @@ function renderText(box, text, ts, eref) {
     } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; const iv = p.match(/[?&]invite=([\w-]+)/); if (iv) a.onclick = e => { e.preventDefault(); joinServer(iv[1]); }; box.append(a); }
     else mdInto(box, p);
   });
-  const img = text.match(/https?:\/\/[^\s<]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s<]*)?/i);
-  if (img) { const im = el('img', 'embed'); im.src = img[0]; im.loading = 'lazy'; im.referrerPolicy = 'no-referrer'; im.alt = ''; box.append(im); }
+  const img = text.match(/https?:\/\/[^\s<]+\.(?:png|jpe?g|gif|webp|mp4|webm)(?:\?[^\s<]*)?/i);
+  if (img) {
+    const vid = /\.(mp4|webm)(\?|$)/i.test(img[0]), im = el(vid ? 'video' : 'img', 'embed'); im.src = img[0];
+    if (vid) { im.autoplay = true; im.loop = true; im.muted = true; im.playsInline = true; } else { im.loading = 'lazy'; im.referrerPolicy = 'no-referrer'; im.alt = ''; }
+    box.append(im);
+  } else {
+    const tn = text.match(/https?:\/\/(?:www\.)?tenor\.com\/(?:[\w-]+\/)?view\/[^\s<]*?-(\d{6,})(?!\d)/i);
+    if (tn) { const f = el('iframe', 'tenorf'); f.src = 'https://tenor.com/embed/' + tn[1]; f.loading = 'lazy'; f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups'); box.append(f); }
+  }
   return ping;
 }
 function react(key, emo) {
@@ -514,7 +539,7 @@ function react(key, emo) {
 }
 function fill(key) {
   const r = rows[key], m = r.m;
-  const ping = renderText(r.txt, m.text || '', m.ts, m.eref);
+  const ping = renderText(r.txt, m.text || '', m.ts, m.eref); mediaInto(r.txt, m);
   if (m.stk) { const src = m.stks && m.stks !== curServer ? m.stks : null; if (src && !bookData[src]) loadBook(src); const st = src ? (bookData[src] || { stickers: {} }).stickers[m.stk] : ownStickers()[m.stk]; if (st) { const im = el('img', 'stkimg'); im.src = st.img; im.alt = st.name; im.title = st.name; r.txt.append(im); } else r.txt.append(el('i', null, src && !bookData[src] ? '(carregando figurinha…)' : '(figurinha removida)')); }
   if (m.edited) r.txt.append(el('span', 'edited', ' (editado)'));
   r.row.classList.toggle('ping', ping && m.uid !== me.uid);
@@ -543,7 +568,7 @@ function addMsg(key, m) {
     ed.title = 'Editar'; del.title = 'Apagar';
     ed.onclick = () => { const t = prompt('Editar mensagem:', rows[key].m.text); if (t && t.trim()) db.ref(`messages/${curServer}/${curChannel}/${key}`).update({ text: t.trim().slice(0, 4000), edited: true }); };
     del.onclick = () => { if (confirm('Apagar esta mensagem?')) db.ref(`messages/${curServer}/${curChannel}/${key}`).remove(); };
-    if (m.uid === me.uid && !m.bot && !m.stk) tools.append(ed); tools.append(del);
+    if (m.uid === me.uid && !m.bot && !m.stk && !m.att && !m.gif) tools.append(ed); tools.append(del);
   }
   row.append(tools); list.append(row);
   rows[key] = { row, txt, rx, m }; fill(key);
@@ -553,20 +578,27 @@ function addMsg(key, m) {
 
 $('#box').addEventListener('keydown', e => {
   if (e.key !== 'Enter' || e.shiftKey) return;
-  e.preventDefault();
-  const text = e.target.value.trim(); if (!text || !curChannel) return;
-  const km = text.match(/^[!./$%?&*+-]?(setkey|delkey)\b\s*(.*)$/i);
-  if (km) { e.target.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove(); groqKeyCmd(km[1].toLowerCase(), km[2].trim()); return; }
-  if (/gsk_[A-Za-z0-9]{20,}/.test(text)) { e.target.value = ''; return toast('🔒 Isso parece uma chave de API e não foi enviado ao chat. Para configurar o bot, use !setkey SUA_CHAVE.'); }
+  e.preventDefault(); sendMsg();
+});
+async function sendMsg(gifUrl) {
+  const box = $('#box'), text = box.value.trim();
+  if ((!text && !pendingAtt && !gifUrl) || !curChannel || curChannel === 'news') return;
+  const km = text.match(/^[!./$%?&*+-]?(setkey|delkey|setklipy|delklipy)\b\s*(.*)$/i);
+  if (km) { box.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove(); groqKeyCmd(km[1].toLowerCase(), km[2].trim()); return; }
+  if (/gsk_[A-Za-z0-9]{20,}/.test(text)) { box.value = ''; return toast('🔒 Isso parece uma chave de API e não foi enviado ao chat. Para configurar o bot, use !setkey SUA_CHAVE.'); }
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   if (curServer !== 'dm' && /(^|\s)@(everyone|here)(?![\wÀ-ÿ])/i.test(text) && !can('admin')) return toast('Só o dono ou administradores podem usar @everyone e @here.');
-  const am = automod(text); if (am) { toast('🛡 AutoMod: ' + am); return; }
-  e.target.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove();
-  db.ref(`messages/${curServer}/${curChannel}`).push({
-    uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true,
-    text: text.slice(0, 4000), eref: emojiRefs(text), ts: firebase.database.ServerValue.TIMESTAMP
-  }); concordBot(text); giveXp(); askAI(text);
-});
+  const am = text ? automod(text) : null; if (am) { toast('🛡 AutoMod: ' + am); return; }
+  const path = `messages/${curServer}/${curChannel}`;
+  box.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove();
+  const payload = { uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: text.slice(0, 4000), eref: emojiRefs(text), ts: firebase.database.ServerValue.TIMESTAMP };
+  if (pendingAtt) { payload.att = pendingAtt; clearAtt(); }
+  if (gifUrl) payload.gif = gifUrl;
+  const kl = text.match(KLIPY_LINK);
+  if (kl && !payload.gif && getKlipyKey()) { try { const g = await klipyBySlug(kl[1]); if (g) payload.gif = g.url; } catch (x) {} }
+  db.ref(path).push(payload);
+  if (text) { concordBot(text); giveXp(); askAI(text); }
+}
 let tTimer;
 $('#box').addEventListener('input', () => {
   if (!curChannel) return;
@@ -595,7 +627,7 @@ function renderMembers() {
 /* ---------- configurações e Nitro ---------- */
 $('#settings').onclick = () => {
   pendingPhoto = null; $('#s-name').value = me.name; $('#s-photo').value = me.photo.startsWith('data:') ? '' : me.photo; setPrev(me.photo); $('#s-bio').value = me.bio; $('#s-status').value = me.status;
-  $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal(); fillTagSelect(); syncNP();
+  $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal(); fillTagSelect(); syncNP(); $('#s-uid').value = me.uid;
 };
 $('#s-save').onclick = () => {
   me.name = $('#s-name').value.trim() || me.name; const lk = $('#s-photo').value.trim(); if (pendingPhoto !== null) me.photo = pendingPhoto; else if (lk !== (me.photo.startsWith('data:') ? '' : me.photo)) me.photo = lk; me.bio = $('#s-bio').value.trim(); me.status = $('#s-status').value;
@@ -668,7 +700,7 @@ async function addFriend() {
 }
 async function renderFriends() {
   const L = $('#flist'); if (!curHome || !L) return;
-  const tk = ++rtk, nodes = [el('h4', null, 'Mensagens diretas')];
+  const tk = ++rtk, nodes = [el('h4', null, 'Concord'), officialRow(), el('h4', null, 'Mensagens diretas')];
   { const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'ConcordBot'), tg = el('span', 'bottag', 'BOT'); nm.style.flex = 1;
     w.append(botAv(), el('span', 'dot online')); r.append(w, nm, tg); r.onclick = () => openDM('bot_concord', 'ConcordBot'); decorate(r, 'dm/' + dmId('bot_concord')); nodes.push(r); }
   for (const [title, st] of [['Pedidos recebidos', 'incoming'], ['Amigos', 'friend'], ['Pedidos enviados', 'outgoing']]) {
@@ -686,7 +718,7 @@ async function renderFriends() {
       nodes.push(row);
     }
   }
-  if (nodes.length <= 2) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
+  if (nodes.length <= 4) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
   L.replaceChildren(...nodes);
 }
 function openDM(id, name) {
@@ -1342,6 +1374,14 @@ async function groqModels(key) {
 }
 const getKey = () => { try { return localStorage.getItem('concord_groq') || ''; } catch (e) { return ''; } };
 function groqKeyCmd(cmd, key) {
+  if (cmd === 'delklipy') { try { localStorage.removeItem('concord_klipy'); } catch (e) {} return toast('🔑 Chave do Klipy removida deste aparelho.'); }
+  if (cmd === 'setklipy') {
+    if (!/^\S{12,}$/.test(key)) return toast('Use: !setklipy SUA_CHAVE (crie uma grátis em klipy.com/developers)');
+    try { localStorage.setItem('concord_klipy', key); toast('🔑 Chave do Klipy salva neste aparelho! Toque em GIF para buscar.'); } catch (e) { toast('Não consegui salvar a chave neste navegador.'); } return;
+  }
+  groqKeyCmd0(cmd, key);
+}
+function groqKeyCmd0(cmd, key) {
   if (cmd === 'delkey') { try { localStorage.removeItem('concord_groq'); } catch (e) {} return toast('🔑 Chave da Groq removida deste aparelho.'); }
   if (!/^gsk_\S{16,}$/.test(key)) return toast('Use: !setkey gsk_SUA_CHAVE (crie uma grátis em console.groq.com/keys)');
   try { localStorage.setItem('concord_groq', key); toast('🔑 Chave salva só neste aparelho! Agora mencione @ConcordBot e escreva algo.'); }
@@ -1380,7 +1420,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.23-emojis2';
+const BUILD = '2026.10.25-midia';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -1482,7 +1522,7 @@ function svExpr(c) {
   });
 }
 function sendSticker(id, sid) {
-  if (!curChannel) return;
+  if (!curChannel || curChannel === 'news') return;
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   const path = curServer === 'dm' ? `messages/dm/${curChannel}` : `messages/${curServer}/${curChannel}`;
   db.ref(path).push({ uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: '', stk: id, stks: sid, ts: firebase.database.ServerValue.TIMESTAMP });
@@ -1640,7 +1680,7 @@ function notify(key, m, dm, ment) {
 }
 function openKey(key) {
   const i = key.indexOf('/'), sid = key.slice(0, i), cid = key.slice(i + 1);
-  if (sid === 'dm') { const p = dmPeer[cid]; if (p) openDM(p.id, p.name); return; }
+  if (key === 'dm/news') return showNews(); if (sid === 'dm') { const p = dmPeer[cid]; if (p) openDM(p.id, p.name); return; }
   selectServer(sid, srvName(sid)); setTimeout(() => selectChannel(cid, chName[key] || ''), 350);
 }
 function listen(key, path, name) {
@@ -1689,6 +1729,168 @@ $('#n-browser').onchange = e => {
 };
 window.addEventListener('focus', () => { if (curServer && curChannel) markRead(curServer + '/' + curChannel); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && curServer && curChannel) markRead(curServer + '/' + curChannel); });
+
+/* ---------- CONCORD OFICIAL: novidades e atualizações ---------- */
+let siteAdmin = false;
+function initNews() {
+  loadKlipyShared();
+  on(serverSubs, db.ref('admins/' + me.uid), 'value', s => { siteAdmin = s.val() === true; });
+  att['dm/news'] = Date.now(); if (!('dm/news' in readT)) readT['dm/news'] = nowS();
+  const q = db.ref('news').limitToLast(1), fn = snap => { const p = snap.val() || {}; onNew('dm/news', { uid: p.by || 'official', name: 'Concord Oficial', text: p.title || 'Nova novidade', ts: p.ts }); };
+  q.on('child_added', fn); serverSubs.push(() => q.off('child_added', fn));
+}
+function officialRow() {
+  const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'Concord Oficial'), tg = el('span', 'offtag', '✔ OFICIAL');
+  nm.style.flex = 1; w.append(botAv()); tg.style.marginLeft = '6px'; r.append(w, nm, tg); r.onclick = showNews; decorate(r, 'dm/news'); return r;
+}
+function photoData(f, maxW, cb) {
+  if (!f || !f.type.startsWith('image/')) return toast('Escolha uma imagem.');
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => { const k = Math.min(1, maxW / img.width), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg', .78)); };
+  img.onerror = () => toast('Não consegui abrir essa imagem.'); img.src = url;
+}
+function showNews() {
+  clear(msgSubs); curServer = 'dm'; curChannel = 'news'; lastMsg = null; rows = {}; $('#typing').textContent = '';
+  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#bpbtn').hidden = true;
+  const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Só a equipe do Concord publica aqui'; closeDrawers(); markRead('dm/news');
+  const wrap = el('div', 'newsw'), feed = el('div'); if (siteAdmin) wrap.append(newsForm(), adminCard()); wrap.append(feed); $('#msgs').replaceChildren(wrap);
+  on(msgSubs, db.ref('news').limitToLast(20), 'value', s => {
+    const all = Object.entries(s.val() || {}).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0)); feed.replaceChildren();
+    if (!all.length) feed.append(el('div', 'empty', 'Ainda não há novidades. Fique de olho: as atualizações do Concord aparecem aqui. 🚀'));
+    all.forEach(([id, p]) => {
+      const c = el('div', 'post'), m = el('div', 'meta'), body = el('div', 'txt');
+      m.append(botAv(), el('b', null, 'Concord Oficial'), el('span', 'offtag', '✔ OFICIAL'), el('span', null, p.ts ? new Date(p.ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''));
+      if (siteAdmin) { const x = el('button', 'icon', '🗑'); x.title = 'Apagar'; x.style.marginLeft = 'auto'; x.onclick = () => confirm('Apagar esta novidade?') && db.ref('news/' + id).remove(); m.append(x); }
+      renderText(body, p.text || '', p.ts); c.append(m, el('h3', null, p.title || ''), body);
+      if (p.img) { const im = el('img', 'postimg'); im.src = p.img; im.alt = ''; c.append(im); }
+      feed.append(c);
+    });
+  });
+}
+function newsForm() {
+  const d = el('div', 'card2'), t = el('input'), x = el('textarea'), fi = el('input'), ur = el('input'), ok = el('button', 'btn', '📢 Publicar novidade'); let img = '';
+  d.append(el('h3', null, 'Publicar novidade (só administradores)'), t, x, el('small', null, 'Imagem (opcional):'), fi, ur, ok);
+  t.placeholder = 'Título (ex.: Versão 2.1: tickets e tags!)'; t.maxLength = 100; x.placeholder = 'Texto da novidade. Aceita **negrito**, links e convites de servidor.'; x.maxLength = 3000; x.style.minHeight = '120px';
+  fi.type = 'file'; fi.accept = 'image/*'; ur.placeholder = '…ou cole o link de uma imagem (https://…)';
+  fi.onchange = () => photoData(fi.files[0], 800, d2 => { img = d2; ur.value = ''; toast('Imagem pronta!'); });
+  ok.onclick = async () => {
+    if (!t.value.trim() || !x.value.trim()) return toast('Preencha o título e o texto.');
+    const link = ur.value.trim(), post = { title: t.value.trim(), text: x.value.trim(), ts: firebase.database.ServerValue.TIMESTAMP, by: me.uid, byName: me.name };
+    if (img || /^https?:\/\//.test(link)) post.img = img || link;
+    try { await db.ref('news').push(post); t.value = x.value = ur.value = ''; img = ''; fi.value = ''; toast('Novidade publicada! 🎉'); } catch (e) { toast(/permission/i.test(e.message) ? 'Sem permissão: sua conta não é administradora do Concord.' : 'Erro: ' + e.message); }
+  };
+  return d;
+}
+function adminCard() {
+  const d = el('div', 'card2'), inp = el('input'), add = el('button', 'btn ghost', 'Tornar administrador'), list = el('div');
+  const kk = el('input'), kb = el('button', 'btn ghost', 'Salvar chave do Klipy para todos'); kk.placeholder = 'Chave do Klipy (GIFs para todos os usuários)'; kb.onclick = async () => { try { await db.ref('config/klipy').set(kk.value.trim() || null); toast('Chave do Klipy salva para todos!'); } catch (e) { toast('Erro: ' + e.message); } };
+  d.append(el('h3', null, '🛡 Administradores do Concord'), el('small', null, 'Cole o ID da pessoa (⚙ > Seu ID) para que ela também possa publicar novidades.'), inp, add, list, el('h3', null, '🎞 GIFs (Klipy)'), el('small', null, 'Uma chave compartilhada faz o botão GIF funcionar para todo mundo. Crie em klipy.com/developers.'), kk, kb); inp.placeholder = 'ID do usuário';
+  const load = async () => {
+    const a = (await db.ref('admins').get()).val() || {}; list.replaceChildren();
+    for (const id of Object.keys(a)) {
+      const u = await getUser(id), r = el('div', 'row'), t = el('span', null, '🛡 ' + (u.name && u.name !== '?' ? u.name : id) + (id === me.uid ? ' (você)' : '')); t.style.flex = 1; r.append(t);
+      if (id !== me.uid) { const x = el('button', 'icon', '🗑'); x.onclick = async () => { await db.ref('admins/' + id).remove(); load(); }; r.append(x); } list.append(r);
+    }
+  };
+  add.onclick = async () => { const id = inp.value.trim(); if (!id) return; try { await db.ref('admins/' + id).set(true); inp.value = ''; toast('Administrador adicionado!'); load(); } catch (e) { toast('Erro: ' + e.message); } };
+  load().catch(() => {}); return d;
+}
+$('#s-uid').onclick = e => { e.target.select(); try { navigator.clipboard.writeText(me.uid); toast('ID copiado!'); } catch (x) {} };
+
+/* ---------- ANEXOS (arquivo do PC ou galeria do celular) ---------- */
+let pendingAtt = '';
+function prepImage(f) {
+  return new Promise((res, rej) => {
+    if (!f || !f.type.startsWith('image/')) return rej(new Error('Escolha um arquivo de imagem.'));
+    if (f.type === 'image/gif') {
+      if (f.size > 900 * 1024) return rej(new Error('GIF grande demais (máx. 900 KB). Use o botão GIF ou um link.'));
+      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Não consegui ler o arquivo.')); return r.readAsDataURL(f);
+    }
+    const img = new Image(), url = URL.createObjectURL(f), png = f.type === 'image/png';
+    img.onload = () => {
+      URL.revokeObjectURL(url); let max = 1280, q = .82, out = '';
+      for (let i = 0; i < 7; i++) {
+        const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas'), ctx = c.getContext('2d');
+        c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+        const asPng = png && i < 2; if (!asPng) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+        ctx.drawImage(img, 0, 0, c.width, c.height); out = c.toDataURL(asPng ? 'image/png' : 'image/jpeg', q);
+        if (out.length < 240e3) break; max *= .8; q = Math.max(.5, q - .08);
+      }
+      res(out);
+    };
+    img.onerror = () => rej(new Error('Não consegui abrir essa imagem.')); img.src = url;
+  });
+}
+function showAtt() {
+  const p = $('#attprev'); p.replaceChildren(); p.hidden = !pendingAtt; if (!pendingAtt) return;
+  const im = el('img'), x = el('button', 'icon', '✕'); im.src = pendingAtt; x.title = 'Remover'; x.onclick = clearAtt;
+  p.append(im, el('span', null, 'Imagem pronta (' + Math.round(pendingAtt.length * .75 / 1024) + ' KB). Escreva uma legenda, se quiser, e envie.'), x);
+}
+function clearAtt() { pendingAtt = ''; showAtt(); }
+function setAtt(f) {
+  if (!curChannel || curChannel === 'news' || $('#box').disabled) return toast('Abra uma conversa para enviar imagens.');
+  prepImage(f).then(d => { pendingAtt = d; showAtt(); $('#box').focus(); }).catch(e => toast(e.message));
+}
+$('#attbtn').onclick = () => $('#fileinp').click();
+$('#fileinp').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) setAtt(f); };
+$('#sendbtn').onclick = () => sendMsg();
+$('#box').addEventListener('paste', e => { const f = [...((e.clipboardData && e.clipboardData.files) || [])].find(x => x.type.startsWith('image/')); if (f) { e.preventDefault(); setAtt(f); } });
+const chatEl = document.querySelector('.chat');
+chatEl.addEventListener('dragover', e => e.preventDefault());
+chatEl.addEventListener('drop', e => { const f = e.dataTransfer && [...e.dataTransfer.files].find(x => x.type.startsWith('image/')); if (f) { e.preventDefault(); setAtt(f); } });
+function openLb(src) { $('#lb img').src = src; $('#lb').hidden = false; }
+$('#lb').onclick = () => $('#lb').hidden = true;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lb').hidden = true; });
+function mediaInto(box, m) {
+  if (m.att && /^data:image\//.test(m.att)) { const im = el('img', 'attimg'); im.src = m.att; im.alt = 'imagem enviada'; im.onclick = () => openLb(m.att); box.append(im); }
+  if (m.gif && /^https:\/\//.test(m.gif)) {
+    const vid = /\.(mp4|webm)(\?|$)/i.test(m.gif), g = el(vid ? 'video' : 'img', 'gifimg'); g.src = m.gif;
+    if (vid) { g.autoplay = true; g.loop = true; g.muted = true; g.playsInline = true; } else { g.loading = 'lazy'; g.referrerPolicy = 'no-referrer'; g.alt = 'GIF'; }
+    box.append(g);
+  }
+}
+
+/* ---------- GIFs do KLIPY (o Tenor encerrou a API em 30/06/2026) ---------- */
+const KLIPY_LINK = /https?:\/\/(?:www\.)?klipy\.com\/(?:[\w-]+\/)?gifs?\/([\w-]+)/i;
+let klipyShared = '';
+const getKlipyKey = () => { try { return localStorage.getItem('concord_klipy') || klipyShared; } catch (e) { return klipyShared; } };
+async function klipyGet(path, params) {
+  const key = getKlipyKey(); if (!key) throw new Error('nokey');
+  const r = await fetch(`https://api.klipy.com/api/v1/${encodeURIComponent(key)}/${path}?` + new URLSearchParams({ customer_id: me.uid, ...params }));
+  const d = await r.json().catch(() => ({})); if (!r.ok || d.result === false) throw new Error((d.errors && JSON.stringify(d.errors)) || d.message || 'erro ' + r.status);
+  return d;
+}
+function klipyPick(it, sizes, fmts) {
+  const f = it.file || it.files || {};
+  for (const sz of sizes) for (const t of fmts) { const x = f[sz] && f[sz][t]; const u = x && (x.url || x); if (typeof u === 'string' && /^https:/.test(u)) return { url: u }; }
+  let found = ''; (function w(o) { if (found || !o || typeof o !== 'object') return; for (const v of Object.values(o)) { if (typeof v === 'string' && /^https:\/\/.*\.(gif|webp|mp4)(\?|$)/i.test(v)) { found = v; return; } w(v); } })(it);
+  return found ? { url: found } : null;
+}
+async function klipyBySlug(slug) { const d = await klipyGet('gifs/' + slug, {}); const x = d.data; const it = Array.isArray(x && x.data) ? x.data[0] : (x && x.data) || x; return it ? klipyPick(it, ['md', 'sm', 'hd', 'xs'], ['webp', 'gif']) : null; }
+const gifp = el('div'), gb = el('button', 'icon', 'GIF'); gifp.id = 'gifp'; gifp.hidden = true; gb.id = 'gifbtn'; gb.title = 'GIFs'; gb.style.fontWeight = '700'; gb.style.fontSize = '13px';
+document.querySelector('.cwrap').append(gifp); $('#emo').before(gb);
+let gT = 0;
+function buildGif(q) {
+  gifp.replaceChildren(); const si = el('input'), grid = el('div', 'gg'), st = el('small'); si.placeholder = 'Search KLIPY'; si.value = q || ''; si.style.fontSize = '16px';
+  gifp.append(si, st, grid, el('small', null, 'Powered by KLIPY'));
+  const load = async v => {
+    grid.replaceChildren(); st.textContent = 'Carregando…';
+    try {
+      const d = await (v ? klipyGet('gifs/search', { q: v, per_page: 24, page: 1 }) : klipyGet('gifs/trending', { per_page: 24, page: 1 })), list = (d.data && d.data.data) || d.data || [];
+      st.textContent = list.length ? '' : 'Nenhum GIF encontrado.';
+      list.forEach(it => {
+        const pv = klipyPick(it, ['sm', 'xs', 'md'], ['webp', 'gif']), sendv = klipyPick(it, ['md', 'sm', 'hd', 'xs'], ['webp', 'gif']); if (!pv || !sendv) return;
+        const b = el('button'), im = el('img'); b.type = 'button'; im.src = pv.url; im.loading = 'lazy'; im.alt = it.title || 'GIF'; b.append(im); b.onclick = () => { gifp.hidden = true; sendMsg(sendv.url); }; grid.append(b);
+      });
+    } catch (e) { st.textContent = e.message === 'nokey' ? 'Para usar GIFs, configure uma chave grátis do Klipy: envie !setklipy SUA_CHAVE (crie em klipy.com/developers) ou peça a um administrador do Concord para configurar uma chave para todos.' : 'Não consegui falar com o Klipy: ' + e.message; }
+  };
+  si.oninput = () => { clearTimeout(gT); gT = setTimeout(() => load(si.value.trim()), 450); }; load(q || '');
+}
+gb.onclick = () => { $('#picker').hidden = true; if (typeof stk !== 'undefined') stk.hidden = true; gifp.hidden = !gifp.hidden; if (!gifp.hidden) buildGif(''); };
+document.addEventListener('click', e => { if (!e.target.closest('#gifbtn,#gifp')) gifp.hidden = true; });
+const _h5 = CB['!ajuda'];
+CB['!ajuda'] = () => _h5() + '\n🎞 GIFs: botão GIF (Klipy). Configure com ' + (cfg.prefix || '!') + 'setklipy SUA_CHAVE';
+function loadKlipyShared() { on(serverSubs, db.ref('config/klipy'), 'value', s => { klipyShared = typeof s.val() === 'string' ? s.val() : ''; }); }
 </script>
 </body>
 </html>
