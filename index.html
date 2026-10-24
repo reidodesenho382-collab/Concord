@@ -209,6 +209,12 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .srvtag{display:inline-flex;align-items:center;gap:3px;background:var(--hover);border:1px solid var(--line);border-radius:6px;padding:0 6px;font-size:11px;font-weight:700;margin-right:6px;vertical-align:middle;line-height:18px}
 .srvtag img{height:13px;width:13px;object-fit:cover;border-radius:3px}
 #stk small{color:var(--mute)}
+.nb{position:absolute;right:-4px;bottom:-4px;min-width:18px;height:18px;border-radius:9px;background:#fff;color:var(--ink);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--rail)}
+.nb.red{background:var(--red);color:#fff}
+.nb:empty{min-width:11px;width:11px;height:11px;padding:0}
+.ch.unread{color:var(--text);font-weight:700}
+.ch .nb,.u .nb{position:static;float:right;margin-top:3px;border:0}
+.u .nb{float:none;margin-left:6px}
 </style>
 </head>
 <body>
@@ -271,6 +277,10 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <input id="s-photo" placeholder="…ou cole o link de uma imagem (https://…)">
     <input id="s-bio" placeholder="Sobre mim (descrição)" maxlength="190">
     <small>Tag de servidor (aparece ao lado do seu nome):</small><select id="s-tag"><option value="">Nenhuma</option></select>
+    <h3>🔔 Notificações</h3>
+    <label class="chk"><input type="checkbox" class="sw" id="n-sound"><span>Sons de notificação</span></label>
+    <label class="chk"><input type="checkbox" class="sw" id="n-browser"><span>Notificações do navegador (com o Concord aberto em segundo plano)</span></label>
+    <label class="chk"><input type="checkbox" class="sw" id="n-mo"><span>Em servidores, avisar só quando me mencionarem</span></label>
     <select id="s-status"><option value="online">Online</option><option value="idle">Ausente</option><option value="dnd">Não perturbe</option></select>
     <h3><span class="nitro">✦</span>Concord Nitro (grátis)</h3>
     <small>Nitro ativo: selo ✦, nome com cor ou degradê, mensagens de até 4000 caracteres e imagens/GIFs por link.</small>
@@ -350,7 +360,7 @@ $('#google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthPr
 $('#logout').onclick = () => { leaveCall(); if (me) db.ref('presence/' + me.uid).remove(); auth.signOut(); };
 
 auth.onAuthStateChanged(u => {
-  if (!u) { me = null; checked.clear(); srvInfo = {}; bookSubs = {}; bookData = {}; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
+  if (!u) { me = null; checked.clear(); srvInfo = {}; bookSubs = {}; bookData = {}; watched = {}; unread = {}; seenFirst = false; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
   start(u);
 });
 
@@ -371,7 +381,7 @@ async function start(u) {
   me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0, tagSid: '' };
   $('#auth').hidden = true; $('#app').hidden = false; errBox('');
   try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0, tagSid: p.tagSid || '' }); } catch (e) {}
-  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM();
+  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify();
   on(serverSubs, db.ref('.info/connected'), 'value', c => {
     if (!c.val()) return;
     const r = db.ref('presence/' + me.uid); r.onDisconnect().remove(); r.set(me.status);
@@ -388,14 +398,14 @@ async function start(u) {
 
 /* ---------- servidores ---------- */
 function renderRail(list) {
-  lastRailList = list; loadBooks();
+  lastRailList = list; loadBooks(); watchServers();
   const rail = $('#rail'); rail.replaceChildren();
-  const home = el('button', 'srv home' + (curHome ? ' on' : '')); home.onclick = showHome; home.title = 'Concord'; const hi = el('img'); hi.src = document.querySelector('.logo').src; hi.alt = 'Concord'; home.append(hi); rail.append(home, el('div', 'sep'));
+  const home = el('button', 'srv home' + (curHome ? ' on' : '')); home.onclick = showHome; home.title = 'Concord'; const hi = el('img'); hi.src = document.querySelector('.logo').src; hi.alt = 'Concord'; home.append(hi); srvBadge(home, 'dm'); rail.append(home, el('div', 'sep'));
   Object.entries(list).forEach(([id, v]) => {
     v = { ...v, ...(srvInfo[id] || {}) };
     const b = el('button', 'srv' + (id === curServer ? ' on' : ''), v.icon ? null : (v.name || '?')[0].toUpperCase());
     if (v.icon) { const im = el('img'); im.src = v.icon; im.alt = ''; b.append(im); }
-    b.title = v.name; b.onclick = () => selectServer(id, v.name); rail.append(b);
+    b.title = v.name; b.onclick = () => selectServer(id, v.name); srvBadge(b, id); rail.append(b);
   });
   rail.append(el('div', 'sep'));
   const add = el('button', 'srv add', '＋'); add.title = 'Criar ou entrar em um servidor';
@@ -462,7 +472,7 @@ $('#addch').onclick = () => openSV('channels');
 
 let msgSubs = [];
 function selectChannel(cid, name) {
-  clear(msgSubs); curChannel = cid; lastMsg = null; rows = {}; $('#typing').textContent = '';
+  clear(msgSubs); curChannel = cid; lastMsg = null; rows = {}; $('#typing').textContent = ''; markRead(curServer + '/' + cid);
   document.querySelectorAll('.ch').forEach(b => b.classList.toggle('on', b.textContent === '# ' + name));
   $('#cname').textContent = '# ' + name;
   const box = $('#box'); box.disabled = false; box.placeholder = 'Enviar mensagem em #' + name; box.focus();
@@ -585,7 +595,7 @@ function renderMembers() {
 /* ---------- configurações e Nitro ---------- */
 $('#settings').onclick = () => {
   pendingPhoto = null; $('#s-name').value = me.name; $('#s-photo').value = me.photo.startsWith('data:') ? '' : me.photo; setPrev(me.photo); $('#s-bio').value = me.bio; $('#s-status').value = me.status;
-  $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal(); fillTagSelect();
+  $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal(); fillTagSelect(); syncNP();
 };
 $('#s-save').onclick = () => {
   me.name = $('#s-name').value.trim() || me.name; const lk = $('#s-photo').value.trim(); if (pendingPhoto !== null) me.photo = pendingPhoto; else if (lk !== (me.photo.startsWith('data:') ? '' : me.photo)) me.photo = lk; me.bio = $('#s-bio').value.trim(); me.status = $('#s-status').value;
@@ -660,7 +670,7 @@ async function renderFriends() {
   const L = $('#flist'); if (!curHome || !L) return;
   const tk = ++rtk, nodes = [el('h4', null, 'Mensagens diretas')];
   { const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'ConcordBot'), tg = el('span', 'bottag', 'BOT'); nm.style.flex = 1;
-    w.append(botAv(), el('span', 'dot online')); r.append(w, nm, tg); r.onclick = () => openDM('bot_concord', 'ConcordBot'); nodes.push(r); }
+    w.append(botAv(), el('span', 'dot online')); r.append(w, nm, tg); r.onclick = () => openDM('bot_concord', 'ConcordBot'); decorate(r, 'dm/' + dmId('bot_concord')); nodes.push(r); }
   for (const [title, st] of [['Pedidos recebidos', 'incoming'], ['Amigos', 'friend'], ['Pedidos enviados', 'outgoing']]) {
     const ids = Object.keys(lastFriends).filter(k => lastFriends[k] === st); if (!ids.length) continue;
     nodes.push(el('h4', null, title + ' — ' + ids.length));
@@ -670,7 +680,7 @@ async function renderFriends() {
       n.style.flex = 1; paintName(n, u.c1, u.c2);
       w.append(avatar(u, id), el('span', 'dot ' + (p ? (typeof p === 'string' ? p : 'online') : 'off'))); row.append(w, n);
       const ib = (t, ti, fn) => { const b = el('button', 'icon', t); b.title = ti; b.onclick = e => { e.stopPropagation(); fn(); }; row.append(b); };
-      if (st === 'friend') { n.onclick = () => openDM(id, u.name); ib('💬', 'Mensagem', () => openDM(id, u.name)); ib('📞', 'Ligar', () => callDM(id, u.name)); ib('✕', 'Remover amigo', () => confirm('Remover ' + u.name + '?') && setF(id, null)); }
+      if (st === 'friend') { decorate(row, 'dm/' + dmId(id)); n.onclick = () => openDM(id, u.name); ib('💬', 'Mensagem', () => openDM(id, u.name)); ib('📞', 'Ligar', () => callDM(id, u.name)); ib('✕', 'Remover amigo', () => confirm('Remover ' + u.name + '?') && setF(id, null)); }
       if (st === 'incoming') { ib('✓', 'Aceitar', () => setF(id, 'friend')); ib('✕', 'Recusar', () => setF(id, null)); }
       if (st === 'outgoing') ib('✕', 'Cancelar pedido', () => setF(id, null));
       nodes.push(row);
@@ -680,7 +690,7 @@ async function renderFriends() {
   L.replaceChildren(...nodes);
 }
 function openDM(id, name) {
-  curServer = 'dm'; selectChannel(dmId(id), name);
+  curServer = 'dm'; selectChannel(dmId(id), name); trackDM(id, name);
   $('#cname').textContent = '@ ' + name; closeDrawers(); $('#box').placeholder = 'Enviar mensagem para @' + name;
 }
 async function callDM(id, name) {
@@ -804,7 +814,7 @@ function renderChans() {
   const vis = Object.entries(curChans).filter(([, c]) => canSee(c)).sort(byPos);
   const btn = ([cid, c]) => {
     const v = c.type === 'voice', b = el('button', 'ch' + (cid === curChannel ? ' on' : ''), (c.ticket ? (c.ticket.status === 'closed' ? '🔒 ' : '🎫 ') : v ? '🔊 ' : '# ') + c.name + (c.view && !c.ticket ? ' 🔒' : ''));
-    b.onclick = () => v ? joinCall('v_' + curServer + '_' + cid) : selectChannel(cid, c.name); return b;
+    b.onclick = () => v ? joinCall('v_' + curServer + '_' + cid) : selectChannel(cid, c.name); decorate(b, curServer + '/' + cid); return b;
   };
   vis.filter(([, c]) => !gOf(c)).forEach(x => box.append(btn(x)));
   Object.entries(curCats).sort(byPos).forEach(([id, cat]) => {
@@ -1576,6 +1586,109 @@ CB['!emojis'] = () => {
   });
   return '🎭 Emojis e figurinhas que você pode usar em qualquer servidor ou DM:\n' + (lines.join('\n') || 'Você não está em nenhum servidor.');
 };
+
+/* ---------- NOTIFICAÇÕES ---------- */
+let unread = {}, watched = {}, seenFirst = false, tOff = 0, lastBeep = 0, actx = null, bT = 0;
+const chName = {}, dmPeer = {}, att = {};
+let NP = {}, readT = {};
+try { NP = JSON.parse(localStorage.getItem('concord_np') || '{}'); } catch (e) {}
+try { readT = JSON.parse(localStorage.getItem('concord_read') || '{}'); } catch (e) {}
+const saveNP = () => { try { localStorage.setItem('concord_np', JSON.stringify(NP)); } catch (e) {} };
+const saveRead = () => { try { localStorage.setItem('concord_read', JSON.stringify(readT)); } catch (e) {} };
+const nowS = () => Date.now() + tOff;
+function unlockAudio() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) {} }
+['click', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, unlockAudio, { once: true }));
+function beep() {
+  if (NP.sound === false || Date.now() - lastBeep < 1500 || !actx) return; lastBeep = Date.now();
+  try { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = 880; g.gain.setValueAtTime(.12, actx.currentTime); g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + .25); o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + .25); } catch (e) {}
+}
+function badges() {
+  clearTimeout(bT);
+  bT = setTimeout(() => {
+    renderRail(lastRailList); renderChans(); renderFriends();
+    let n = 0; Object.values(unread).forEach(u => n += u.n); document.title = (n ? '(' + Math.min(n, 99) + ') ' : '') + 'Concord';
+  }, 60);
+}
+function markRead(key) { readT[key] = nowS(); saveRead(); if (unread[key]) { delete unread[key]; badges(); } }
+function decorate(b, key) {
+  const u = unread[key]; if (!u) return;
+  b.classList.add('unread'); b.append(el('span', 'nb' + (u.mention ? ' red' : ''), u.mention ? String(Math.min(u.n, 99)) : ''));
+}
+function srvBadge(btn, sid) {
+  let n = 0, m = false; for (const [k, u] of Object.entries(unread)) if (k.startsWith(sid + '/')) { n += u.n; m = m || u.mention; }
+  if (n) btn.append(el('span', 'nb' + (m ? ' red' : ''), m ? String(Math.min(n, 99)) : ''));
+}
+function mentionsMe(text, ts) {
+  const mine = me.name.replace(/\s+/g, '').toLowerCase();
+  return (text.match(/@[^\s@]+/g) || []).some(t => { const x = t.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase(); return x === mine || x === 'everyone' || (x === 'here' && (ts || 0) >= sessionStart); });
+}
+function onNew(key, m) {
+  if (!m || m.bot || m.uid === me.uid || (m.ts || 0) <= (readT[key] || 0)) return;
+  const i = key.indexOf('/'), sid = key.slice(0, i), cid = key.slice(i + 1), dm = sid === 'dm';
+  if (curServer === sid && curChannel === cid && document.hasFocus() && !document.hidden) { markRead(key); return; }
+  const ment = !dm && mentionsMe(m.text || '', m.ts), u = unread[key] || { n: 0, mention: false };
+  unread[key] = { n: u.n + 1, mention: u.mention || dm || ment }; badges();
+  if (Date.now() - (att[key] || 0) < 2500 || (!dm && !ment && NP.mo)) return;
+  notify(key, m, dm, ment);
+}
+function notify(key, m, dm, ment) {
+  beep();
+  const sid = key.split('/')[0], title = dm ? m.name : `#${chName[key] || ''} · ${srvName(sid)}`, body = (dm ? '' : m.name + ': ') + (m.stk ? '🖼 figurinha' : (m.text || '').slice(0, 120));
+  if (NP.browser && typeof Notification !== 'undefined' && Notification.permission === 'granted' && (document.hidden || !document.hasFocus())) {
+    try { const n = new Notification(title, { body, icon: document.querySelector('.logo').src, tag: key }); n.onclick = () => { window.focus(); openKey(key); n.close(); }; } catch (e) {}
+  } else if (dm || ment) toast((dm ? '💬 ' : '🔔 ') + title + ': ' + body, 'Abrir', () => openKey(key));
+}
+function openKey(key) {
+  const i = key.indexOf('/'), sid = key.slice(0, i), cid = key.slice(i + 1);
+  if (sid === 'dm') { const p = dmPeer[cid]; if (p) openDM(p.id, p.name); return; }
+  selectServer(sid, srvName(sid)); setTimeout(() => selectChannel(cid, chName[key] || ''), 350);
+}
+function listen(key, path, name) {
+  if (watched[key]) return; watched[key] = 1; if (name) chName[key] = name; att[key] = Date.now(); if (!(key in readT)) readT[key] = nowS();
+  const q = db.ref(path).limitToLast(1), fn = snap => onNew(key, snap.val()); q.on('child_added', fn); serverSubs.push(() => q.off('child_added', fn));
+}
+function watchDM(id, name) { const d = dmId(id); dmPeer[d] = { id, name }; listen('dm/' + d, 'messages/dm/' + d); }
+function trackDM(id, name) {
+  watchDM(id, name);
+  try { const l = JSON.parse(localStorage.getItem('concord_dms') || '[]'); if (!l.some(p => p.id === id)) { l.push({ id, name }); localStorage.setItem('concord_dms', JSON.stringify(l.slice(-30))); } } catch (e) {}
+}
+function watchServers() {
+  Object.keys(lastRailList).forEach(sid => {
+    const k = 's:' + sid; if (watched[k]) return; watched[k] = 1;
+    const ref = db.ref('channels/' + sid), fn = s => Object.entries(s.val() || {}).forEach(([cid, c]) => { if (c.type !== 'voice' && !c.view && !c.ticket) listen(sid + '/' + cid, `messages/${sid}/${cid}`, c.name); });
+    ref.on('value', fn); serverSubs.push(() => ref.off('value', fn));
+  });
+}
+function initNotify() {
+  on(serverSubs, db.ref('.info/serverTimeOffset'), 'value', s => { tOff = s.val() || 0; });
+  watchDM('bot_concord', 'ConcordBot');
+  try { JSON.parse(localStorage.getItem('concord_dms') || '[]').forEach(p => watchDM(p.id, p.name)); } catch (e) {}
+  const known = {};
+  on(serverSubs, db.ref('friends/' + me.uid), 'value', s => {
+    Object.entries(s.val() || {}).forEach(([id, st]) => {
+      getUser(id).then(u => {
+        if (st === 'friend') watchDM(id, u.name);
+        if (st === 'incoming' && seenFirst && !known[id]) { beep(); toast('👋 ' + u.name + ' quer ser seu amigo!', 'Ver', showHome); }
+        known[id] = st;
+      });
+    });
+    seenFirst = true;
+  });
+}
+function syncNP() {
+  $('#n-sound').checked = NP.sound !== false; $('#n-mo').checked = !!NP.mo;
+  $('#n-browser').checked = !!NP.browser && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+}
+$('#n-sound').onchange = e => { NP.sound = e.target.checked; saveNP(); if (NP.sound) { unlockAudio(); lastBeep = 0; beep(); } };
+$('#n-mo').onchange = e => { NP.mo = e.target.checked; saveNP(); };
+$('#n-browser').onchange = e => {
+  const i = e.target;
+  if (!i.checked) { NP.browser = false; saveNP(); return; }
+  if (typeof Notification === 'undefined') { i.checked = false; return toast('Este navegador não oferece notificações. No iPhone, adicione o Concord à tela inicial.'); }
+  Notification.requestPermission().then(p => { NP.browser = p === 'granted'; i.checked = NP.browser; saveNP(); toast(NP.browser ? '🔔 Notificações ativadas!' : 'Permissão negada. Libere as notificações nas configurações do navegador.'); });
+};
+window.addEventListener('focus', () => { if (curServer && curChannel) markRead(curServer + '/' + curChannel); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && curServer && curChannel) markRead(curServer + '/' + curChannel); });
 </script>
 </body>
 </html>
