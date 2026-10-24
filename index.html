@@ -450,7 +450,6 @@ function selectServer(id, name) {
   on(subs, db.ref('channels/' + id), 'value', s => { if (id !== curServer) return; curChans = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); svRefresh(); });
   on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
-  on(subs, db.ref('bots/' + id), 'value', s => { bots = s.val() || {}; svRefresh(); });
   on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); bpRefresh(); Object.keys(rows).forEach(k => fill(k)); });
   on(subs, db.ref('servers/' + id + '/cats'), 'value', s => { curCats = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
@@ -556,7 +555,7 @@ $('#box').addEventListener('keydown', e => {
   db.ref(`messages/${curServer}/${curChannel}`).push({
     uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true,
     text: text.slice(0, 4000), eref: emojiRefs(text), ts: firebase.database.ServerValue.TIMESTAMP
-  }); runBots(text); concordBot(text); giveXp(); askAI(text);
+  }); concordBot(text); giveXp(); askAI(text);
 });
 let tTimer;
 $('#box').addEventListener('input', () => {
@@ -824,10 +823,10 @@ $('#svx').onclick = () => $('#sv').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sv').hidden = true; });
 function renderSV() {
   const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
-  const tabs = [['general', 'Geral', true], ['panel', '🤖 Painel do ConcordBot', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['bots', 'Bots extras', isOwner()], ['expr', '🎭 Emojis e figurinhas', isOwner()]].filter(t => t[2]);
+  const tabs = [['general', 'Geral', true], ['panel', '🤖 Painel do ConcordBot', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['expr', '🎭 Emojis e figurinhas', isOwner()]].filter(t => t[2]);
   if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
   tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { if (k === 'panel') { $('#sv').hidden = true; return openBP(); } svTab = k; editCh = null; renderSV(); }; n.append(b); });
-  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, bots: svBots, expr: svExpr })[svTab](c);
+  ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, expr: svExpr })[svTab](c);
 }
 function roleChecks(title, sel) {
   const box = el('div'), row = el('div', 'chk'), set = { ...(sel || {}) }; box.append(el('small', null, title));
@@ -932,34 +931,6 @@ function svMembers(c) {
     d.append(row); c.append(d);
   });
 }
-function svBots(c) {
-  const f = el('div', 'card2'), nm = el('input'), tx = el('textarea'), lb = el('label', 'chk'), fun = el('input');
-  c.append(el('h2', null, 'Bots')); f.append(el('h3', null, 'Criar bot'));
-  nm.placeholder = 'Nome do bot'; tx.placeholder = 'Comandos, um por linha:\n!regras = Seja gentil com todos, {user}!\n!site = Bem-vindo a {server}';
-  fun.type = 'checkbox'; fun.checked = true; lb.append(fun, el('span', null, 'Incluir comandos de diversão (!dado !moeda !8ball !ping !hora !ajuda)'));
-  const ok = el('button', 'btn', 'Criar bot');
-  ok.onclick = () => { if (!nm.value.trim()) return toast('Dê um nome ao bot.'); db.ref('bots/' + curServer).push({ name: nm.value.trim().slice(0, 30), cmds: tx.value.slice(0, 2000), fun: fun.checked }); toast('Bot criado! Teste digitando um comando no chat.'); };
-  f.append(nm, tx, lb, ok); c.append(f, el('small', null, 'Variáveis: {user} = quem usou o comando, {server} = nome do servidor.'));
-  Object.entries(bots).forEach(([bid, b]) => {
-    const d = el('div', 'card2'), r = el('div', 'row'), t = el('b', null, '🤖 ' + b.name), del = el('button', 'icon', '🗑'); t.style.flex = 1;
-    del.onclick = () => confirm('Apagar o bot ' + b.name + '?') && db.ref(`bots/${curServer}/${bid}`).remove();
-    r.append(t, del); d.append(r, el('small', null, (b.fun ? 'Diversão ativa. ' : '') + (b.cmds ? b.cmds.split('\n').filter(Boolean).length + ' comandos personalizados.' : ''))); c.append(d);
-  });
-}
-const FUN = {
-  '!dado': () => '🎲 Saiu ' + (1 + Math.floor(Math.random() * 6)), '!moeda': () => Math.random() < .5 ? '🪙 Cara' : '🪙 Coroa', '!ping': () => '🏓 Pong!',
-  '!hora': () => '🕒 ' + new Date().toLocaleTimeString('pt-BR'), '!8ball': () => ['Sim.', 'Não.', 'Talvez.', 'Com certeza!', 'Pergunte de novo.'][Math.floor(Math.random() * 5)]
-};
-function runBots(text) {
-  if (curServer === 'dm') return; const cmd = text.trim().split(/\s+/)[0].toLowerCase();
-  Object.entries(bots).forEach(([bid, b]) => {
-    const lines = (b.cmds || '').split('\n').map(l => l.split('=')).filter(p => p.length > 1).map(p => [p[0].trim().toLowerCase(), p.slice(1).join('=').trim()]);
-    let r = (lines.find(l => l[0] === cmd) || [])[1];
-    if (!r && b.fun) r = cmd === '!ajuda' ? 'Comandos: ' + [...Object.keys(FUN), ...lines.map(l => l[0])].join(' ') : FUN[cmd] && FUN[cmd]();
-    if (r) db.ref(`messages/${curServer}/${curChannel}`).push({ uid: 'bot_' + bid, name: b.name, photo: '', bot: true, text: r.replace(/\{user\}/g, me.name).replace(/\{server\}/g, $('#sname').textContent).slice(0, 1000), ts: firebase.database.ServerValue.TIMESTAMP });
-  });
-}
-
 /* ---------- menções: @everyone, @here e autocomplete ---------- */
 const sessionStart = Date.now();
 const mp = el('div'); mp.id = 'mp'; mp.hidden = true; document.querySelector('.cwrap').append(mp);
