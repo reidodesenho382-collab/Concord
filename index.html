@@ -249,6 +249,24 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .tile.fs{position:fixed!important;inset:0;z-index:35;width:auto!important;height:auto!important;border-radius:0;aspect-ratio:auto;background:#000}
 .tile:fullscreen video,.tile.fs video{object-fit:contain}
 @media(max-width:700px){#grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}#grid.spot .tile.big{height:min(46vh,420px)}}
+.embed2{background:var(--side);border-left:4px solid var(--green);border-radius:6px;padding:10px 12px;margin-top:6px;max-width:min(520px,100%);display:flex;gap:12px;justify-content:space-between;line-height:1.35}
+.embed2 .e-body{min-width:0;flex:1;display:grid;gap:6px}.e-title{font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.e-desc{font-size:14px}.e-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.e-f{grid-column:1/-1;font-size:14px}.e-f.in{grid-column:auto}.e-f b{display:block;font-size:13px;margin-bottom:2px}
+.e-img{max-width:100%;border-radius:6px;display:block}.e-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;flex:none}
+.e-foot{font-size:12px;color:var(--mute)}
+#emb{width:min(820px,96vw);max-height:92dvh;overflow:auto}
+.embgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.embform{display:grid;gap:8px;align-content:start}.embprev{display:grid;gap:6px;align-content:start}
+@media(max-width:700px){.embgrid{grid-template-columns:1fr}.cwrap .icon{padding:2px 5px;font-size:18px}}
+.md1{font-size:1.75em;font-weight:800;line-height:1.2;margin:6px 0 2px}
+.md2{font-size:1.45em;font-weight:800;line-height:1.2;margin:5px 0 2px}
+.md3{font-size:1.2em;font-weight:700;line-height:1.25;margin:4px 0 2px}
+.mdsub{font-size:.8em;color:var(--mute);line-height:1.3}
+.spoiler{border-radius:4px;padding:0 3px;cursor:pointer}
+.spoiler:not(.open){background:#2a3a32;color:transparent;user-select:none}
+.spoiler:not(.open) *{color:transparent!important;background:none!important;border-color:transparent!important;pointer-events:none}
+.spoiler:not(.open) img,.spoiler:not(.open) video{visibility:hidden}
+.spoiler.open{background:#ffffff1a;cursor:auto}
 </style>
 </head>
 <body>
@@ -279,7 +297,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <div class="head"><button class="icon mob" id="menu" title="Menu">☰</button><span id="cname"># selecione um servidor</span><button class="icon" id="addch" title="Novo canal" hidden>＋</button><button class="icon mob" id="memb" title="Membros">👥</button></div>
     <div id="call" hidden><div id="grid"></div><div class="ctl"><button id="bmic" title="Microfone">🎤</button><button id="bdeaf" title="Ensurdecer">🎧</button><button id="bcam" title="Câmera">📷</button><button id="bscr" title="Compartilhar tela">🖥</button><button id="bend" class="off" title="Sair da call">📞</button></div></div>
     <div id="msgs"><div class="empty">Crie um servidor ou entre em um com um código de convite.</div></div>
-    <div class="compose"><div id="attprev" hidden></div><div class="cwrap"><input type="file" id="fileinp" accept="image/*" hidden><button class="icon" id="attbtn" title="Enviar imagem (arquivo ou galeria)">📎</button><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><button class="icon" id="sendbtn" title="Enviar">➤</button><div id="picker" hidden></div></div><div id="typing"></div></div>
+    <div class="compose"><div id="attprev" hidden></div><div class="cwrap"><input type="file" id="fileinp" accept="image/*" hidden><button class="icon" id="attbtn" title="Enviar imagem (arquivo ou galeria)">📎</button><button class="icon" id="embbtn" title="Criador de embed">🧩</button><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><button class="icon" id="sendbtn" title="Enviar">➤</button><div id="picker" hidden></div></div><div id="typing"></div></div>
   </main>
   <aside class="mem" id="mem"></aside>
 </div>
@@ -300,6 +318,8 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 <div id="sv" hidden><nav class="svn" id="svn"></nav><div class="svc" id="svc"></div><button class="icon svx" id="svx" title="Fechar">✕</button></div>
 
 <div id="bp" hidden><nav class="svn" id="bpn"></nav><div class="svc" id="bpc"></div><button class="icon svx" id="bpx" title="Fechar">✕</button></div>
+
+<dialog id="emb"><div id="emb-body"></div></dialog>
 
 <div id="lb" hidden><img alt=""></div>
 
@@ -526,27 +546,47 @@ function selectChannel(cid, name) {
 }
 
 let rows = {};
+function inlineInto(box, chunk, ts) {
+  let ping = false;
+  chunk.split(/(\|\|[\s\S]+?\|\|)/).forEach((seg, k) => {
+    if (!seg) return;
+    if (k % 2 && seg.length > 4) {
+      const sp = el('span', 'spoiler'); sp.title = 'Spoiler: toque para revelar'; sp.onclick = () => sp.classList.add('open');
+      if (inlineInto(sp, seg.slice(2, -2), ts)) ping = true; box.append(sp); return;
+    }
+    seg.split(/(https?:\/\/[^\s<]+|@\S+)/).forEach((p, i) => {
+      if (!p) return;
+      if (i % 2 && p[0] === '@') {
+        const m = el('span', 'mention', p); box.append(m);
+        const t = p.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase();
+        if (t === me.name.replace(/\s+/g, '').toLowerCase() || t === 'everyone' || (t === 'here' && (ts || Date.now()) >= sessionStart)) ping = true;
+      } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; const iv = p.match(/[?&]invite=([\w-]+)/); if (iv) a.onclick = e => { e.preventDefault(); joinServer(iv[1]); }; box.append(a); }
+      else mdInto(box, p);
+    });
+  });
+  return ping;
+}
 function renderText(box, text, ts, eref) {
   curEref = eref || null;
   text = text.replace(/gsk_[A-Za-z0-9]{16,}/g, 'gsk_••••••••');
   { const nn = text.match(/:[a-z0-9_]{2,32}:/gi); box.classList.toggle('bigemo', !!nn && nn.length <= 5 && /^(\s*:[a-z0-9_]{2,32}:\s*)+$/i.test(text) && nn.every(n => findEmoji(n.slice(1, -1).toLowerCase()))); }
-  box.replaceChildren(); let ping = false;
-  text.split(/(https?:\/\/[^\s<]+|@\S+)/).forEach((p, i) => {
-    if (!p) return;
-    if (i % 2 && p[0] === '@') {
-      const m = el('span', 'mention', p); box.append(m);
-      const t = p.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase();
-      if (t === me.name.replace(/\s+/g, '').toLowerCase() || t === 'everyone' || (t === 'here' && (ts || Date.now()) >= sessionStart)) ping = true;
-    } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; const iv = p.match(/[?&]invite=([\w-]+)/); if (iv) a.onclick = e => { e.preventDefault(); joinServer(iv[1]); }; box.append(a); }
-    else mdInto(box, p);
+  box.replaceChildren(); let ping = false, buf = [];
+  const flush = () => { if (buf.length) { if (inlineInto(box, buf.join('\n'), ts)) ping = true; buf = []; } };
+  text.split('\n').forEach(line => {
+    const h = line.match(/^(#{1,3}) +(\S.*)$/) || line.match(/^(-#) +(\S.*)$/);
+    if (!h) { buf.push(line); return; }
+    flush(); const d = el('div', h[1] === '-#' ? 'mdsub' : 'md' + h[1].length);
+    if (inlineInto(d, h[2], ts)) ping = true; box.append(d);
   });
-  const img = text.match(/https?:\/\/[^\s<]+\.(?:png|jpe?g|gif|webp|mp4|webm)(?:\?[^\s<]*)?/i);
+  flush();
+  const plain = text.replace(/\|\|[\s\S]+?\|\|/g, '');
+  const img = plain.match(/https?:\/\/[^\s<]+\.(?:png|jpe?g|gif|webp|mp4|webm)(?:\?[^\s<]*)?/i);
   if (img) {
     const vid = /\.(mp4|webm)(\?|$)/i.test(img[0]), im = el(vid ? 'video' : 'img', 'embed'); im.src = img[0];
     if (vid) { im.autoplay = true; im.loop = true; im.muted = true; im.playsInline = true; } else { im.loading = 'lazy'; im.referrerPolicy = 'no-referrer'; im.alt = ''; }
     box.append(im);
   } else {
-    const tn = text.match(/https?:\/\/(?:www\.)?tenor\.com\/(?:[\w-]+\/)?view\/[^\s<]*?-(\d{6,})(?!\d)/i);
+    const tn = plain.match(/https?:\/\/(?:www\.)?tenor\.com\/(?:[\w-]+\/)?view\/[^\s<]*?-(\d{6,})(?!\d)/i);
     if (tn) { const f = el('iframe', 'tenorf'); f.src = 'https://tenor.com/embed/' + tn[1]; f.loading = 'lazy'; f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups'); box.append(f); }
   }
   return ping;
@@ -587,7 +627,7 @@ function addMsg(key, m) {
     ed.title = 'Editar'; del.title = 'Apagar';
     ed.onclick = () => { const t = prompt('Editar mensagem:', rows[key].m.text); if (t && t.trim()) db.ref(`messages/${curServer}/${curChannel}/${key}`).update({ text: t.trim().slice(0, 4000), edited: true }); };
     del.onclick = () => { if (confirm('Apagar esta mensagem?')) db.ref(`messages/${curServer}/${curChannel}/${key}`).remove(); };
-    if (m.uid === me.uid && !m.bot && !m.stk && !m.att && !m.gif) tools.append(ed); tools.append(del);
+    if (m.uid === me.uid && !m.bot && !m.stk && !m.att && !m.gif && !m.embed) tools.append(ed); tools.append(del);
   }
   row.append(tools); list.append(row);
   rows[key] = { row, txt, rx, m }; fill(key);
@@ -1084,7 +1124,7 @@ async function leaveServer(id) {
 /* ---------- ConcordBot: diversão, utilidades e moderação ---------- */
 let bans = {}, mutes = {};
 function botAv() { const i = el('img', 'av'); i.src = document.querySelector('.logo').src; i.alt = ''; return i; }
-const say = t => db.ref(`messages/${curServer}/${curChannel}`).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: String(t).slice(0, 1500), ts: firebase.database.ServerValue.TIMESTAMP });
+const say = (t, cmd) => db.ref(`messages/${curServer}/${curChannel}`).push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', text: '', embed: t && typeof t === 'object' ? t : toEmbed(t, cmd), ts: firebase.database.ServerValue.TIMESTAMP });
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const findMember = tok => { const t = (tok || '').replace(/^@/, '').replace(/[.,!?;:]+$/, '').toLowerCase(); return Object.entries(members).find(([, u]) => u.name.replace(/\s+/g, '').toLowerCase() === t); };
 const JOKES = ['Por que o programador confunde Halloween com Natal? Porque 31 OCT = 25 DEC.', 'O que o zero disse pro oito? Belo cinto!', 'Qual é o cúmulo da rapidez? Fechar o zíper de uma cueca saindo do banho.', 'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.', 'O que o tomate foi fazer no banco? Tirar extrato.'];
@@ -1128,8 +1168,8 @@ const CB = {
 async function concordBot(text) {
   const px = cfg.prefix || '!'; if (!text.startsWith(px)) return; text = '!' + text.slice(px.length);
   const [c, ...a] = text.trim().split(/\s+/), cmd = c.toLowerCase(), cu = Object.values(cfg.cmds || {}).find(x => '!' + x.name === cmd);
-  const f = cu ? () => (cu.admin && !can('admin') ? '⛔ Só administradores podem usar este comando.' : fillVars(cu.reply)) : CB[cmd]; if (!f) return; if (CAT[cmd] && (cfg.off || {})[CAT[cmd]]) return;
-  try { const r = await f(a, a.join(' ')); if (r) await say(r); }
+  const f = cu ? () => (cu.admin && !can('admin') ? '⛔ Só administradores podem usar este comando.' : { title: cu.title || '', desc: fillVars(cu.reply), color: '#73cb27', footer: 'ConcordBot · ' + cmd }) : CB[cmd]; if (!f) return; if (CAT[cmd] && (cfg.off || {})[CAT[cmd]]) return;
+  try { const r = await f(a, a.join(' ')); if (r) await say(r, cmd); }
   catch (e) { toast('ConcordBot: ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
 async function forceLeave(id, why) {
@@ -1370,10 +1410,10 @@ const BP = {
     [['🎉 Diversão', 'dado moeda 8ball piada fato escolher abraco ship calc enquete'], ['🛠 Utilidades', 'ping hora servidor perfil ajuda'], ['🔨 Moderação', 'kick ban unban mute unmute avisar limpar'], ['💰 Economia', 'saldo daily trabalhar apostar transferir top loja comprar inventario dar'], ['📈 Níveis', 'nivel rank']]
       .forEach(([t, l]) => d.append(el('small', null, t + ': ' + l.split(' ').map(x => p + x).join(' '))));
     d = k.card('Criar comando personalizado'); const cn = k.inp('nome do comando, sem o prefixo (ex.: regras)'), cr = el('textarea'), la = k.chk('Só administradores'), add = el('button', 'btn', 'Criar comando');
-    cr.placeholder = 'Resposta. Variáveis: {user} {server} {count} {channel} {random}'; d.append(cn, cr, la, add);
+    cr.placeholder = 'Resposta. Variáveis: {user} {server} {count} {channel} {random}'; const ct = k.inp('Título do embed (opcional)'); d.append(cn, ct, cr, la, add);
     add.onclick = () => {
       const nm = cn.value.trim().toLowerCase().replace(/[^a-z0-9áàâãéêíóôõúç_-]/g, ''); if (!nm || !cr.value.trim()) return toast('Preencha o nome e a resposta.');
-      if (CB['!' + nm]) return toast('Esse nome já é um comando do bot.'); R().child('cmds').push({ name: nm, reply: cr.value.slice(0, 1000), admin: la.input.checked });
+      if (CB['!' + nm]) return toast('Esse nome já é um comando do bot.'); R().child('cmds').push({ name: nm, title: ct.value.trim().slice(0, 100), reply: cr.value.slice(0, 1000), admin: la.input.checked });
     };
     d = k.card('Seus comandos'); const e = Object.entries(cfg.cmds || {}); if (!e.length) d.append(el('small', null, 'Nenhum ainda.'));
     e.forEach(([id, x]) => k.row(d, p + x.name + (x.admin ? ' 🔒' : '') + ' → ' + x.reply.slice(0, 60), () => R().child('cmds/' + id).remove()));
@@ -1473,7 +1513,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.28-amigos';
+const BUILD = '2026.10.30-markdown';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -1484,8 +1524,9 @@ function mdInto(box, text) {
   text.split(/(\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\*[^*\n]+\*)/).forEach((p, i) => {
     if (!p) return;
     if (i % 2 === 0) { emojiInto(box, p); return; }
-    const tag = p.startsWith('**') ? 'b' : p.startsWith('__') ? 'u' : p.startsWith('~~') ? 's' : p[0] === '`' ? 'code' : 'i', n = tag === 'i' || tag === 'code' ? 1 : 2;
-    box.append(el(tag, null, p.slice(n, -n)));
+    const tag = p.startsWith('**') ? 'b' : p.startsWith('__') ? 'u' : p.startsWith('~~') ? 's' : p[0] === '`' ? 'code' : 'i', n = tag === 'i' || tag === 'code' ? 1 : 2, x = el(tag), inner = p.slice(n, -n);
+    if (tag === 'code') x.textContent = inner; else mdInto(x, inner);
+    box.append(x);
   });
 }
 
@@ -1895,6 +1936,7 @@ function openLb(src) { $('#lb img').src = src; $('#lb').hidden = false; }
 $('#lb').onclick = () => $('#lb').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lb').hidden = true; });
 function mediaInto(box, m) {
+  if (m.embed && typeof m.embed === 'object') box.append(renderEmbed(m.embed));
   if (m.att && /^data:image\//.test(m.att)) { const im = el('img', 'attimg'); im.src = m.att; im.alt = 'imagem enviada'; im.onclick = () => openLb(m.att); box.append(im); }
   if (m.gif && /^https:\/\//.test(m.gif)) {
     const vid = /\.(mp4|webm)(\?|$)/i.test(m.gif), g = el(vid ? 'video' : 'img', 'gifimg'); g.src = m.gif;
@@ -1945,6 +1987,74 @@ document.addEventListener('click', e => { if (!e.target.closest('#gifbtn,#gifp')
 const _h5 = CB['!ajuda'];
 CB['!ajuda'] = () => _h5() + '\n🎞 GIFs: botão GIF (Klipy). Configure com ' + (cfg.prefix || '!') + 'setklipy SUA_CHAVE';
 function loadKlipyShared() { on(serverSubs, db.ref('config/klipy'), 'value', s => { klipyShared = typeof s.val() === 'string' ? s.val() : ''; }); }
+
+/* ---------- EMBEDS: criador e exibição ---------- */
+const okUrl = u => typeof u === 'string' && (/^https:\/\//.test(u) || /^data:image\//.test(u));
+function toEmbed(t, cmd) {
+  const lines = String(t).split('\n'), first = lines[0], e = { color: /^(⛔|❌|⚠️|⏳)/.test(first) ? '#ed5565' : '#73cb27', footer: 'ConcordBot' + (cmd ? ' · ' + cmd : '') };
+  if (lines.length > 1) {
+    e.title = first.slice(0, 100); const fields = [], rest = [];
+    lines.slice(1).forEach(l => { const m = l.match(/^(.{1,28}?): (.+)$/); if (m && lines.length > 3) fields.push({ n: m[1], v: m[2].slice(0, 300) }); else rest.push(l); });
+    if (fields.length >= 2) { e.fields = fields; e.desc = rest.join('\n'); } else e.desc = lines.slice(1).join('\n');
+  } else e.desc = first;
+  return e;
+}
+function renderEmbed(e) {
+  const d = el('div', 'embed2'), body = el('div', 'e-body');
+  d.style.borderLeftColor = /^#[0-9a-f]{6}$/i.test(e.color) ? e.color : '#73cb27';
+  if (e.title) body.append(el('div', 'e-title', String(e.title).slice(0, 100)));
+  if (e.desc) { const x = el('div', 'e-desc txt'); renderText(x, String(e.desc).slice(0, 2000), 0); body.append(x); }
+  if (Array.isArray(e.fields) && e.fields.length) {
+    const g = el('div', 'e-fields');
+    e.fields.slice(0, 6).forEach(f => { const c = el('div', 'e-f' + (f.inline ? ' in' : '')), v = el('div'); c.append(el('b', null, String(f.n || '').slice(0, 60))); renderText(v, String(f.v || '').slice(0, 300), 0); c.append(v); g.append(c); });
+    body.append(g);
+  }
+  if (okUrl(e.img)) { const im = el('img', 'e-img'); im.src = e.img; im.alt = ''; im.loading = 'lazy'; im.referrerPolicy = 'no-referrer'; body.append(im); }
+  if (e.footer) body.append(el('div', 'e-foot', String(e.footer).slice(0, 100)));
+  d.append(body);
+  if (okUrl(e.thumb) && !/^data:/.test(e.thumb)) { const t = el('img', 'e-thumb'); t.src = e.thumb; t.alt = ''; t.referrerPolicy = 'no-referrer'; d.append(t); }
+  return d;
+}
+function cleanEmbed(E) {
+  const f = (E.fields || []).filter(x => x.n && x.n.trim() && x.v && x.v.trim()).slice(0, 6).map(x => ({ n: x.n.trim().slice(0, 60), v: x.v.trim().slice(0, 300), inline: !!x.inline }));
+  return { title: (E.title || '').trim().slice(0, 100), desc: (E.desc || '').trim().slice(0, 2000), color: /^#[0-9a-f]{6}$/i.test(E.color) ? E.color : '#73cb27', fields: f, img: okUrl(E.img) ? E.img : '', thumb: okUrl(E.thumb) && !/^data:/.test(E.thumb) ? E.thumb : '', footer: (E.footer || '').trim().slice(0, 100) };
+}
+function sendEmbed(e) {
+  if (!(e.title || e.desc || e.fields.length || e.img)) return toast('O embed está vazio. Preencha ao menos o título ou a descrição.');
+  if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
+  db.ref(`messages/${curServer}/${curChannel}`).push({ uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: '', embed: e, ts: firebase.database.ServerValue.TIMESTAMP });
+  $('#emb').close(); toast('Embed enviado!');
+}
+function openEmbed() {
+  if (!curChannel || curChannel === 'news' || $('#box').disabled) return toast('Abra uma conversa para enviar um embed.');
+  const d = $('#emb'), body = $('#emb-body'), E = { title: '', desc: '', color: '#73cb27', img: '', thumb: '', footer: '', fields: [] };
+  const form = el('div', 'embform'), prev = el('div', 'embprev'), grid = el('div', 'embgrid'), fl = el('div');
+  const upd = () => { prev.replaceChildren(el('small', null, 'Prévia'), renderEmbed(cleanEmbed(E))); };
+  const field = (ph, key, big, max) => { const i = big ? el('textarea') : el('input'); i.placeholder = ph; i.maxLength = max; i.oninput = () => { E[key] = i.value; upd(); }; return i; };
+  const col = el('input'), fi = el('input'), im = field('Imagem grande (link https://… ou envie um arquivo abaixo)', 'img', false, 500);
+  col.type = 'color'; col.value = E.color; col.oninput = () => { E.color = col.value; upd(); };
+  fi.type = 'file'; fi.accept = 'image/*'; fi.onchange = () => photoData(fi.files[0], 800, u => { E.img = u; im.value = ''; upd(); });
+  const draw = () => {
+    fl.replaceChildren();
+    E.fields.forEach((f, i) => {
+      const r = el('div', 'row'), n = el('input'), v = el('input'), l = el('label', 'chk'), c = el('input'), x = el('button', 'icon', '✕'); r.style.flexWrap = 'wrap';
+      n.placeholder = 'Nome do campo'; n.maxLength = 60; n.value = f.n; n.oninput = () => { f.n = n.value; upd(); };
+      v.placeholder = 'Valor'; v.maxLength = 300; v.value = f.v; v.oninput = () => { f.v = v.value; upd(); };
+      c.type = 'checkbox'; c.className = 'sw'; c.checked = !!f.inline; c.onchange = () => { f.inline = c.checked; upd(); }; l.append(c, el('span', null, 'lado a lado'));
+      x.type = 'button'; x.title = 'Remover campo'; x.onclick = () => { E.fields.splice(i, 1); draw(); upd(); }; r.append(n, v, l, x); fl.append(r);
+    });
+  };
+  const add = el('button', 'btn ghost', '＋ Adicionar campo'), send = el('button', 'btn', '📤 Enviar no chat'), close = el('button', 'btn ghost', 'Fechar'), btns = el('div', 'row');
+  add.type = send.type = close.type = 'button'; add.onclick = () => { if (E.fields.length >= 6) return toast('Máximo de 6 campos.'); E.fields.push({ n: '', v: '', inline: false }); draw(); };
+  send.onclick = () => sendEmbed(cleanEmbed(E)); close.onclick = () => d.close(); btns.append(send, close);
+  form.append(el('h3', null, '🧩 Criador de embed'), field('Título', 'title', false, 100), field('Descrição (aceita **negrito**, links, :emojis: e @menções)', 'desc', true, 2000),
+    el('small', null, 'Cor da barra lateral:'), col, im, fi, field('Miniatura (link https://…)', 'thumb', false, 500), field('Rodapé', 'footer', false, 100), el('small', null, 'Campos (até 6):'), fl, add, btns);
+  grid.append(form, prev); body.replaceChildren(grid); d.showModal(); upd();
+}
+$('#embbtn').onclick = openEmbed;
+CB['!embed'] = () => { openEmbed(); return null; };
+const _h6 = CB['!ajuda'];
+CB['!ajuda'] = () => _h6() + '\n🧩 Embeds: ' + (cfg.prefix || '!') + 'embed ou o botão 🧩 ao lado da caixa de mensagem';
 </script>
 </body>
 </html>
