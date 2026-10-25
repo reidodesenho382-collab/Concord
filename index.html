@@ -267,6 +267,17 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .spoiler:not(.open) *{color:transparent!important;background:none!important;border-color:transparent!important;pointer-events:none}
 .spoiler:not(.open) img,.spoiler:not(.open) video{visibility:hidden}
 .spoiler.open{background:#ffffff1a;cursor:auto}
+#replybar{display:flex;align-items:center;gap:8px;background:var(--hover);border-radius:8px;padding:6px 10px;margin-bottom:6px;font-size:13px}
+#replybar span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute)}
+.replyq{display:block;font-size:12.5px;color:var(--mute);border-left:3px solid var(--line);padding:2px 8px;margin-bottom:3px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.replyq:hover{color:var(--text)}.replyq b{color:var(--text)}
+.m.flash{background:#3a4a1a!important}
+.chanref{background:#2d4a1a;color:#bfe89a;border-radius:4px;padding:0 4px;cursor:pointer}.chanref:hover{background:#3a5c22}
+.mention.role{font-weight:600}
+#attmenu{position:absolute;bottom:52px;left:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:4px;z-index:6;display:grid;min-width:190px}
+#attmenu button{background:none;text-align:left;padding:10px 14px;border-radius:6px;font-size:15px}#attmenu button:hover{background:var(--hover)}
+.filecard{display:flex;align-items:center;gap:10px;background:var(--rail);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:6px;max-width:min(420px,100%)}
+.filecard .fi{font-size:26px}.filecard .fx{flex:1;min-width:0;display:grid}.filecard .fname{font-weight:600;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -297,7 +308,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <div class="head"><button class="icon mob" id="menu" title="Menu">☰</button><span id="cname"># selecione um servidor</span><button class="icon" id="addch" title="Novo canal" hidden>＋</button><button class="icon mob" id="memb" title="Membros">👥</button></div>
     <div id="call" hidden><div id="grid"></div><div class="ctl"><button id="bmic" title="Microfone">🎤</button><button id="bdeaf" title="Ensurdecer">🎧</button><button id="bcam" title="Câmera">📷</button><button id="bscr" title="Compartilhar tela">🖥</button><button id="bend" class="off" title="Sair da call">📞</button></div></div>
     <div id="msgs"><div class="empty">Crie um servidor ou entre em um com um código de convite.</div></div>
-    <div class="compose"><div id="attprev" hidden></div><div class="cwrap"><input type="file" id="fileinp" accept="image/*" hidden><button class="icon" id="attbtn" title="Enviar imagem (arquivo ou galeria)">📎</button><button class="icon" id="embbtn" title="Criador de embed">🧩</button><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><button class="icon" id="sendbtn" title="Enviar">➤</button><div id="picker" hidden></div></div><div id="typing"></div></div>
+    <div class="compose"><div id="replybar" hidden></div><div id="attprev" hidden></div><div class="cwrap"><input type="file" id="fileinp" accept="image/png,image/jpeg,image/gif,image/webp" hidden><input type="file" id="filein" hidden><div id="attmenu" hidden></div><button class="icon" id="attbtn" title="Enviar imagem (arquivo ou galeria)">📎</button><button class="icon" id="embbtn" title="Criador de embed">🧩</button><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><button class="icon" id="sendbtn" title="Enviar">➤</button><div id="picker" hidden></div></div><div id="typing"></div></div>
   </main>
   <aside class="mem" id="mem"></aside>
 </div>
@@ -529,7 +540,7 @@ $('#addch').onclick = () => openSV('channels');
 
 let msgSubs = [];
 function selectChannel(cid, name) {
-  clear(msgSubs); curChannel = cid; lastMsg = null; rows = {}; $('#typing').textContent = ''; markRead(curServer + '/' + cid);
+  clear(msgSubs); curChannel = cid; lastMsg = null; rows = {}; $('#typing').textContent = ''; markRead(curServer + '/' + cid); clearReply();
   document.querySelectorAll('.ch').forEach(b => b.classList.toggle('on', b.textContent === '# ' + name));
   $('#cname').textContent = '# ' + name;
   const box = $('#box'); box.disabled = false; box.placeholder = 'Enviar mensagem em #' + name; box.focus();
@@ -554,12 +565,18 @@ function inlineInto(box, chunk, ts) {
       const sp = el('span', 'spoiler'); sp.title = 'Spoiler: toque para revelar'; sp.onclick = () => sp.classList.add('open');
       if (inlineInto(sp, seg.slice(2, -2), ts)) ping = true; box.append(sp); return;
     }
-    seg.split(/(https?:\/\/[^\s<]+|@\S+)/).forEach((p, i) => {
+    seg.split(/(https?:\/\/[^\s<]+|@\S+|#[\wáàâãéêíóôõúç-]{2,32})/).forEach((p, i) => {
       if (!p) return;
       if (i % 2 && p[0] === '@') {
         const m = el('span', 'mention', p); box.append(m);
-        const t = p.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase();
+        const t = p.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase(), real = curServer && curServer !== 'dm';
+        const rl = real ? Object.entries(roles).find(([, r]) => r.name.replace(/\s+/g, '').toLowerCase() === t) : null;
+        if (rl) { m.classList.add('role'); if (/^#[0-9a-f]{6}$/i.test(rl[1].color)) { m.style.color = rl[1].color; m.style.background = rl[1].color + '33'; } if (myRoles[rl[0]]) ping = true; }
         if (t === me.name.replace(/\s+/g, '').toLowerCase() || t === 'everyone' || (t === 'here' && (ts || Date.now()) >= sessionStart)) ping = true;
+      } else if (i % 2 && p[0] === '#') {
+        const nm = p.slice(1).toLowerCase(), hit = curServer && curServer !== 'dm' ? Object.entries(curChans).find(([, c]) => c.name === nm && !c.ticket && canSee(c)) : null;
+        if (hit) { const c = el('span', 'chanref', (hit[1].type === 'voice' ? '🔊 ' : '# ') + hit[1].name); c.onclick = () => hit[1].type === 'voice' ? joinCall('v_' + curServer + '_' + hit[0]) : selectChannel(hit[0], hit[1].name); box.append(c); }
+        else box.append(document.createTextNode(p));
       } else if (i % 2) { const a = el('a', null, p); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; const iv = p.match(/[?&]invite=([\w-]+)/); if (iv) a.onclick = e => { e.preventDefault(); joinServer(iv[1]); }; box.append(a); }
       else mdInto(box, p);
     });
@@ -601,7 +618,8 @@ function fill(key) {
   const ping = renderText(r.txt, m.text || '', m.ts, m.eref); mediaInto(r.txt, m);
   if (m.stk) { const src = m.stks && m.stks !== curServer ? m.stks : null; if (src && !bookData[src]) loadBook(src); const st = src ? (bookData[src] || { stickers: {} }).stickers[m.stk] : ownStickers()[m.stk]; if (st) { const im = el('img', 'stkimg'); im.src = st.img; im.alt = st.name; im.title = st.name; r.txt.append(im); } else r.txt.append(el('i', null, src && !bookData[src] ? '(carregando figurinha…)' : '(figurinha removida)')); }
   if (m.edited) r.txt.append(el('span', 'edited', ' (editado)'));
-  r.row.classList.toggle('ping', ping && m.uid !== me.uid);
+  r.row.classList.toggle('ping', (ping || (m.reply && m.reply.uid === me.uid) || (m.rm && m.rm.some(x => myRoles[x]))) && m.uid !== me.uid);
+  if (m.reply) r.txt.prepend(replyQuote(m.reply));
   r.rx.replaceChildren();
   Object.entries(m.reactions || {}).forEach(([emo, us]) => {
     const n = Object.keys(us).length; if (!n) return;
@@ -620,14 +638,14 @@ function addMsg(key, m) {
     h.append(n); if (!m.bot) { const tg = el('span'); h.append(tg); attachTag(tg, m.uid); } if (m.bot) h.append(el('span', 'bottag', 'BOT')); if (m.nitro) h.append(el('span', 'nitro', '✦')); h.append(el('span', 'when', time)); body.append(h);
   }
   body.append(txt, rx); row.append(body);
-  const tools = el('div', 'tools');
+  const tools = el('div', 'tools'), rb = el('button', null, '↩'); rb.title = 'Responder'; rb.onclick = () => setReply(key); tools.append(rb);
   ['👍', '❤️', '😂', '🎉'].forEach(e => { const b = el('button', null, e); b.onclick = () => react(key, e); tools.append(b); });
   if (m.uid === me.uid || can('msgs')) {
     const ed = el('button', null, '✏️'), del = el('button', null, '🗑');
     ed.title = 'Editar'; del.title = 'Apagar';
     ed.onclick = () => { const t = prompt('Editar mensagem:', rows[key].m.text); if (t && t.trim()) db.ref(`messages/${curServer}/${curChannel}/${key}`).update({ text: t.trim().slice(0, 4000), edited: true }); };
     del.onclick = () => { if (confirm('Apagar esta mensagem?')) db.ref(`messages/${curServer}/${curChannel}/${key}`).remove(); };
-    if (m.uid === me.uid && !m.bot && !m.stk && !m.att && !m.gif && !m.embed) tools.append(ed); tools.append(del);
+    if (m.uid === me.uid && !m.bot && !m.stk && !m.att && !m.gif && !m.embed && !m.file) tools.append(ed); tools.append(del);
   }
   row.append(tools); list.append(row);
   rows[key] = { row, txt, rx, m }; fill(key);
@@ -641,7 +659,7 @@ $('#box').addEventListener('keydown', e => {
 });
 async function sendMsg(gifUrl) {
   const box = $('#box'), text = box.value.trim();
-  if ((!text && !pendingAtt && !gifUrl) || !curChannel || curChannel === 'news') return;
+  if ((!text && !pendingAtt && !pendingFile && !gifUrl) || !curChannel || curChannel === 'news') return;
   const km = text.match(/^[!./$%?&*+-]?(setkey|delkey|setklipy|delklipy)\b\s*(.*)$/i);
   if (km) { box.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove(); groqKeyCmd(km[1].toLowerCase(), km[2].trim()); return; }
   if (/gsk_[A-Za-z0-9]{20,}/.test(text)) { box.value = ''; return toast('🔒 Isso parece uma chave de API e não foi enviado ao chat. Para configurar o bot, use !setkey SUA_CHAVE.'); }
@@ -652,6 +670,13 @@ async function sendMsg(gifUrl) {
   box.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove();
   const payload = { uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: text.slice(0, 4000), eref: emojiRefs(text), ts: firebase.database.ServerValue.TIMESTAMP };
   if (pendingAtt) { payload.att = pendingAtt; clearAtt(); }
+  if (replyTo) { payload.reply = replyTo; clearReply(); }
+  const rmIds = rolesMentioned(text); if (rmIds) payload.rm = rmIds;
+  if (pendingFile) {
+    const pf = pendingFile; pendingFile = null; showAtt();
+    try { const fid = db.ref('files').push().key; await db.ref('files/' + fid).set({ d: pf.data, n: pf.name, t: pf.type, s: pf.size, by: me.uid }); payload.file = { id: fid, n: pf.name, s: pf.size, t: pf.type }; }
+    catch (x) { return toast(/permission/i.test(x.message) ? 'Sem permissão para enviar arquivos: publique as novas regras do Firebase.' : 'Não consegui enviar o arquivo: ' + x.message); }
+  }
   if (gifUrl) payload.gif = gifUrl;
   const kl = text.match(KLIPY_LINK);
   if (kl && !payload.gif && getKlipyKey()) { try { const g = await klipyBySlug(kl[1]); if (g) payload.gif = g.url; } catch (x) {} }
@@ -1071,6 +1096,12 @@ const sessionStart = Date.now();
 const mp = el('div'); mp.id = 'mp'; mp.hidden = true; document.querySelector('.cwrap').append(mp);
 $('#box').addEventListener('input', e => {
   const x = e.target;
+  const hm = x.value.match(/(?:^|\s)#([\wáàâãéêíóôõúç-]*)$/i);
+  if (hm && curServer && curServer !== 'dm') {
+    mp.replaceChildren(); const q = hm[1].toLowerCase(), hit = Object.values(curChans).filter(c => !c.ticket && canSee(c) && c.name.startsWith(q)).slice(0, 8);
+    hit.forEach(c => { const b = el('button'); b.type = 'button'; b.append(el('span', null, (c.type === 'voice' ? '🔊 ' : '# ') + c.name)); b.onclick = () => { x.value = x.value.replace(/#([\wáàâãéêíóôõúç-]*)$/i, '#' + c.name + ' '); mp.hidden = true; x.focus(); }; mp.append(b); });
+    mp.hidden = !hit.length; return;
+  }
   const em = x.value.match(/(?:^|\s):([a-z0-9_]{2,})$/i);
   if (em && curServer && curServer !== 'dm') {
     mp.replaceChildren(); const q = em[1].toLowerCase(), hit = allEmojiList().filter(o => o.name.startsWith(q)).slice(0, 7);
@@ -1081,6 +1112,7 @@ $('#box').addEventListener('input', e => {
   if (!m || !curServer || curServer === 'dm') { mp.hidden = true; return; }
   const q = m[1].toLowerCase(), list = [];
   list.push(['ConcordBot', 'Pergunte algo à IA']); if (can('admin')) list.push(['everyone', 'Notifica todos'], ['here', 'Notifica quem está online']);
+  Object.values(roles).forEach(r => list.push([r.name.replace(/\s+/g, ''), '🎭 cargo']));
   Object.values(members).forEach(u => list.push([u.name.replace(/\s+/g, ''), u.name]));
   const hit = list.filter(([n]) => n.toLowerCase().startsWith(q)).slice(0, 7);
   hit.forEach(([n, d]) => {
@@ -1513,7 +1545,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.30-markdown';
+const BUILD = '2026.10.31-anexos';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -1760,7 +1792,7 @@ function onNew(key, m) {
   if (!m || m.bot || m.uid === me.uid || (m.ts || 0) <= (readT[key] || 0)) return;
   const i = key.indexOf('/'), sid = key.slice(0, i), cid = key.slice(i + 1), dm = sid === 'dm';
   if (curServer === sid && curChannel === cid && document.hasFocus() && !document.hidden) { markRead(key); return; }
-  const ment = !dm && mentionsMe(m.text || '', m.ts), u = unread[key] || { n: 0, mention: false };
+  const ment = !dm && (mentionsMe(m.text || '', m.ts) || (m.reply && m.reply.uid === me.uid) || (m.rm && m.rm.some(r => (myRolesBy[sid] || {})[r]))), u = unread[key] || { n: 0, mention: false };
   unread[key] = { n: u.n + 1, mention: u.mention || dm || ment }; badges();
   if (Date.now() - (att[key] || 0) < 2500 || (!dm && !ment && NP.mo)) return;
   notify(key, m, dm, ment);
@@ -1791,6 +1823,7 @@ function watchServers() {
     const k = 's:' + sid; if (watched[k]) return; watched[k] = 1;
     const ref = db.ref('channels/' + sid), fn = s => Object.entries(s.val() || {}).forEach(([cid, c]) => { if (c.type !== 'voice' && !c.view && !c.ticket) listen(sid + '/' + cid, `messages/${sid}/${cid}`, c.name); });
     ref.on('value', fn); serverSubs.push(() => ref.off('value', fn));
+    const rr = db.ref(`memberRoles/${sid}/${me.uid}`), fr = s => { myRolesBy[sid] = s.val() || {}; }; rr.on('value', fr); serverSubs.push(() => rr.off('value', fr));
   });
 }
 function initNotify() {
@@ -1915,27 +1948,30 @@ function prepImage(f) {
     img.onerror = () => rej(new Error('Não consegui abrir essa imagem.')); img.src = url;
   });
 }
+const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 function showAtt() {
-  const p = $('#attprev'); p.replaceChildren(); p.hidden = !pendingAtt; if (!pendingAtt) return;
-  const im = el('img'), x = el('button', 'icon', '✕'); im.src = pendingAtt; x.title = 'Remover'; x.onclick = clearAtt;
-  p.append(im, el('span', null, 'Imagem pronta (' + Math.round(pendingAtt.length * .75 / 1024) + ' KB). Escreva uma legenda, se quiser, e envie.'), x);
+  const p = $('#attprev'); p.replaceChildren(); p.hidden = !(pendingAtt || pendingFile); if (p.hidden) return;
+  const x = el('button', 'icon', '✕'); x.title = 'Remover'; x.onclick = clearAtt;
+  if (pendingAtt) { const im = el('img'); im.src = pendingAtt; p.append(im, el('span', null, 'Imagem pronta (' + Math.round(pendingAtt.length * .75 / 1024) + ' KB). Escreva uma legenda, se quiser, e envie.'), x); }
+  else p.append(el('span', null, '📄 ' + pendingFile.name + ' (' + fmtSize(pendingFile.size) + '). Toque em enviar.'), x);
 }
-function clearAtt() { pendingAtt = ''; showAtt(); }
+function clearAtt() { pendingAtt = ''; pendingFile = null; showAtt(); }
 function setAtt(f) {
   if (!curChannel || curChannel === 'news' || $('#box').disabled) return toast('Abra uma conversa para enviar imagens.');
-  prepImage(f).then(d => { pendingAtt = d; showAtt(); $('#box').focus(); }).catch(e => toast(e.message));
+  prepImage(f).then(d => { pendingAtt = d; pendingFile = null; showAtt(); $('#box').focus(); }).catch(e => toast(e.message));
 }
-$('#attbtn').onclick = () => $('#fileinp').click();
+
 $('#fileinp').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) setAtt(f); };
 $('#sendbtn').onclick = () => sendMsg();
-$('#box').addEventListener('paste', e => { const f = [...((e.clipboardData && e.clipboardData.files) || [])].find(x => x.type.startsWith('image/')); if (f) { e.preventDefault(); setAtt(f); } });
+
 const chatEl = document.querySelector('.chat');
 chatEl.addEventListener('dragover', e => e.preventDefault());
-chatEl.addEventListener('drop', e => { const f = e.dataTransfer && [...e.dataTransfer.files].find(x => x.type.startsWith('image/')); if (f) { e.preventDefault(); setAtt(f); } });
+chatEl.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); f.type.startsWith('image/') ? setAtt(f) : setFile(f); } });
 function openLb(src) { $('#lb img').src = src; $('#lb').hidden = false; }
 $('#lb').onclick = () => $('#lb').hidden = true;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lb').hidden = true; });
 function mediaInto(box, m) {
+  if (m.file && m.file.id) box.append(fileCard(m.file));
   if (m.embed && typeof m.embed === 'object') box.append(renderEmbed(m.embed));
   if (m.att && /^data:image\//.test(m.att)) { const im = el('img', 'attimg'); im.src = m.att; im.alt = 'imagem enviada'; im.onclick = () => openLb(m.att); box.append(im); }
   if (m.gif && /^https:\/\//.test(m.gif)) {
@@ -2055,6 +2091,65 @@ $('#embbtn').onclick = openEmbed;
 CB['!embed'] = () => { openEmbed(); return null; };
 const _h6 = CB['!ajuda'];
 CB['!ajuda'] = () => _h6() + '\n🧩 Embeds: ' + (cfg.prefix || '!') + 'embed ou o botão 🧩 ao lado da caixa de mensagem';
+
+/* ---------- RESPONDER, ARQUIVOS, COLAR (Ctrl+V) ---------- */
+let replyTo = null, pendingFile = null; const myRolesBy = {};
+function rolesMentioned(text) {
+  if (!curServer || curServer === 'dm') return null; const out = [];
+  (text.match(/@[^\s@]+/g) || []).forEach(t => { const n = t.slice(1).replace(/[.,!?;:]+$/, '').toLowerCase(), r = Object.entries(roles).find(([, x]) => x.name.replace(/\s+/g, '').toLowerCase() === n); if (r && !out.includes(r[0])) out.push(r[0]); });
+  return out.length ? out : null;
+}
+function setReply(key) {
+  const m = rows[key] && rows[key].m; if (!m) return;
+  const snip = m.text ? m.text.replace(/\s+/g, ' ').slice(0, 90) : m.att ? '🖼 imagem' : m.stk ? '🖼 figurinha' : m.gif ? 'GIF' : m.file ? '📄 ' + m.file.n : m.embed ? '🧩 embed' : '…';
+  replyTo = { id: key, uid: m.bot ? '' : m.uid, name: m.name, text: snip }; showReply(); $('#box').focus();
+}
+function showReply() {
+  const b = $('#replybar'); b.replaceChildren(); b.hidden = !replyTo; if (!replyTo) return;
+  const x = el('button', 'icon', '✕'); x.title = 'Cancelar resposta'; x.onclick = clearReply;
+  b.append(el('b', null, '↪ Respondendo a ' + replyTo.name), el('span', null, replyTo.text), x);
+}
+function clearReply() { replyTo = null; showReply(); }
+function replyQuote(r) {
+  const q = el('div', 'replyq'); q.append(el('b', null, '↪ ' + (r.name || '')), document.createTextNode(' ' + (r.text || '')));
+  q.onclick = () => { const t = rows[r.id]; if (t) { t.row.scrollIntoView({ block: 'center', behavior: 'smooth' }); t.row.classList.add('flash'); setTimeout(() => t.row.classList.remove('flash'), 1400); } else toast('A mensagem original está mais acima no histórico.'); };
+  return q;
+}
+function setFile(f) {
+  if (!curChannel || curChannel === 'news' || $('#box').disabled) return toast('Abra uma conversa para enviar arquivos.');
+  if (f.type.startsWith('image/')) return setAtt(f);
+  if (f.size > 1.5 * 1048576) return toast('Arquivo grande demais (máx. 1,5 MB). Use um link.');
+  const r = new FileReader();
+  r.onload = () => { pendingFile = { name: (f.name || 'arquivo').slice(0, 120), size: f.size, type: f.type || 'application/octet-stream', data: r.result }; pendingAtt = ''; showAtt(); $('#box').focus(); };
+  r.onerror = () => toast('Não consegui ler o arquivo.'); r.readAsDataURL(f);
+}
+function fileCard(f) {
+  const c = el('div', 'filecard'), x = el('div', 'fx'), b = el('button', 'btn ghost', '⬇ Baixar');
+  x.append(el('span', 'fname', f.n || 'arquivo'), el('small', null, fmtSize(f.s || 0))); c.append(el('span', 'fi', '📄'), x, b);
+  b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Baixando…';
+    try {
+      const d = (await db.ref('files/' + f.id + '/d').get()).val(); if (!d) throw new Error('o arquivo não existe mais');
+      const blob = await (await fetch(d)).blob(), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = f.n || 'arquivo'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch (e) { toast('Não consegui baixar: ' + e.message); }
+    b.disabled = false; b.textContent = '⬇ Baixar';
+  };
+  return c;
+}
+{
+  const am = $('#attmenu'), mk = (t, fn) => { const b = el('button', null, t); b.type = 'button'; b.onclick = () => { am.hidden = true; fn(); }; return b; };
+  am.append(mk('🖼 Enviar imagem', () => $('#fileinp').click()), mk('📁 Enviar arquivo', () => $('#filein').click()));
+  $('#attbtn').onclick = () => { am.hidden = !am.hidden; };
+  document.addEventListener('click', e => { if (!e.target.closest('#attbtn,#attmenu')) am.hidden = true; });
+}
+$('#filein').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) setFile(f); };
+document.addEventListener('paste', e => {
+  if (e.defaultPrevented) return; const t = e.target;
+  if (t && t !== $('#box') && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+  const cd = e.clipboardData; if (!cd) return;
+  let f = cd.files && cd.files[0]; if (!f) for (const it of (cd.items || [])) if (it.kind === 'file') { f = it.getAsFile(); break; }
+  if (!f) return; e.preventDefault(); f.type.startsWith('image/') ? setAtt(f) : setFile(f);
+});
 </script>
 </body>
 </html>
