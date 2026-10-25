@@ -696,7 +696,7 @@ function showHome() {
   const c = $('#chans'); c.replaceChildren();
   const r = el('div', 'row'), i = el('input'), ad = el('button', 'btn', '＋'), f = el('div');
   r.style.padding = '4px 4px 8px'; i.id = 'fname'; i.placeholder = 'Adicionar amigo (nome exato)';
-  i.onkeydown = e => e.key === 'Enter' && addFriend(); ad.onclick = addFriend; f.id = 'flist'; r.append(i, ad); c.append(r, f);
+  i.onkeydown = e => { if (e.key === 'Enter') addFriend(); }; ad.onclick = addFriend; f.id = 'flist'; r.append(i, ad); c.append(r, f);
   on(chanSubs, db.ref('friends/' + me.uid), 'value', s => { lastFriends = s.val() || {}; renderFriends(); });
 }
 async function addFriend() {
@@ -1473,7 +1473,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.27-calls';
+const BUILD = '2026.10.28-amigos';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
