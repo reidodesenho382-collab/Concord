@@ -282,6 +282,8 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 #blk .card{max-width:440px;text-align:center}
 #rp-body,#md-body,#wn-body{display:grid;gap:10px}
 #rp,#md,#wn{width:min(460px,94vw)}
+#limbar{background:#4a3a14;color:#ffd98a;font-size:13px;padding:6px 12px;cursor:pointer;text-align:center}
+#ac-body,#sx-body,#nm-body{display:grid;gap:10px}#ac,#sx,#nm{width:min(460px,94vw);max-height:92dvh;overflow:auto}
 </style>
 </head>
 <body>
@@ -297,6 +299,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <button class="btn" id="login">Entrar</button>
     <button class="btn ghost" id="signup">Criar conta</button>
     <button class="btn ghost" id="google">Continuar com Google</button>
+    <button class="btn ghost" id="forgot" type="button">Esqueci minha senha</button>
   </div>
 </div>
 
@@ -310,6 +313,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
   </aside>
   <main class="chat">
     <div class="head"><button class="icon mob" id="menu" title="Menu">☰</button><span id="cname"># selecione um servidor</span><button class="icon" id="addch" title="Novo canal" hidden>＋</button><button class="icon mob" id="memb" title="Membros">👥</button></div>
+    <div id="limbar" hidden></div>
     <div id="call" hidden><div id="grid"></div><div class="ctl"><button id="bmic" title="Microfone">🎤</button><button id="bdeaf" title="Ensurdecer">🎧</button><button id="bcam" title="Câmera">📷</button><button id="bscr" title="Compartilhar tela">🖥</button><button id="bend" class="off" title="Sair da call">📞</button></div></div>
     <div id="msgs"><div class="empty">Crie um servidor ou entre em um com um código de convite.</div></div>
     <div class="compose"><div id="replybar" hidden></div><div id="attprev" hidden></div><div class="cwrap"><input type="file" id="fileinp" accept="image/png,image/jpeg,image/gif,image/webp" hidden><input type="file" id="filein" hidden><div id="attmenu" hidden></div><button class="icon" id="attbtn" title="Enviar imagem (arquivo ou galeria)">📎</button><button class="icon" id="embbtn" title="Criador de embed">🧩</button><input id="box" placeholder="Enviar mensagem" autocomplete="off" disabled><button class="icon" id="emo" title="Emojis">😀</button><button class="icon" id="sendbtn" title="Enviar">➤</button><div id="picker" hidden></div></div><div id="typing"></div></div>
@@ -336,6 +340,9 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 
 <div id="ap" hidden><nav class="svn" id="apn"></nav><div class="svc" id="apc"></div><button class="icon svx" id="apx" title="Fechar">✕</button></div>
 <div id="blk" hidden></div>
+<dialog id="ac"><div id="ac-body"></div></dialog>
+<dialog id="sx"><div id="sx-body"></div></dialog>
+<dialog id="nm"><div id="nm-body"></div></dialog>
 <dialog id="rp"><div id="rp-body"></div></dialog>
 <dialog id="wn"><div id="wn-body"></div></dialog>
 <dialog id="md"><div id="md-body"></div></dialog>
@@ -359,6 +366,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <label class="chk"><input type="checkbox" class="sw" id="n-browser"><span>Notificações do navegador (com o Concord aberto em segundo plano)</span></label>
     <label class="chk"><input type="checkbox" class="sw" id="n-mo"><span>Em servidores, avisar só quando me mencionarem</span></label>
     <h3>🆔 Seu ID</h3><small>Toque para copiar. É usado para virar administrador do Concord.</small><input id="s-uid" readonly>
+    <h3>🔐 Conta</h3><div class="row"><button class="btn ghost" id="s-acc" type="button">E-mail e senha</button><button class="btn ghost" id="s-stat" type="button">📋 Status da conta</button></div>
     <select id="s-status"><option value="online">Online</option><option value="idle">Ausente</option><option value="dnd">Não perturbe</option></select>
     <h3><span class="nitro">✦</span>Concord Nitro (grátis)</h3>
     <small>Nitro ativo: selo ✦, nome com cor ou degradê, mensagens de até 4000 caracteres e imagens/GIFs por link.</small>
@@ -407,7 +415,7 @@ const clear = arr => { arr.forEach(f => f()); arr.length = 0; };
 /* ---------- autenticação ---------- */
 const errBox = m => $('#err').textContent = m;
 const msgErr = e => ({
-  'auth/invalid-email': 'E-mail inválido.', 'auth/missing-password': 'Digite a senha.',
+  'auth/invalid-email': 'E-mail inválido.', 'auth/missing-password': 'Digite a senha.', 'auth/wrong-password': 'Senha incorreta.', 'auth/requires-recent-login': 'Por segurança, saia da conta e entre de novo antes de fazer isso.', 'auth/user-disabled': 'Esta conta foi desativada.',
   'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
   'auth/email-already-in-use': 'Este e-mail já tem uma conta. Use Entrar.',
   'auth/invalid-credential': 'E-mail ou senha incorretos, ou a conta não existe.',
@@ -435,6 +443,10 @@ $('#signup').onclick = async () => {
   } catch (e) { errBox(msgErr(e)); }
 };
 $('#google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => errBox(msgErr(e)));
+$('#forgot').onclick = () => {
+  const e = $('#email').value.trim(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return errBox('Digite o seu e-mail no campo acima para receber o link.');
+  auth.sendPasswordResetEmail(e).then(() => { errBox(''); toast('✔ Se esse e-mail tiver conta, enviamos um link para redefinir a senha.'); }).catch(x => errBox(msgErr(x)));
+};
 $('#logout').onclick = () => { leaveCall(); if (me) db.ref('presence/' + me.uid).remove(); auth.signOut(); };
 
 auth.onAuthStateChanged(u => {
@@ -459,7 +471,7 @@ async function start(u) {
   me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0, tagSid: '' };
   $('#auth').hidden = true; $('#app').hidden = false; errBox('');
   try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0, tagSid: p.tagSid || '' }); } catch (e) {}
-  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify(); initNews(); initMod();
+  await ensureUsername(); me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify(); initNews(); initMod();
   on(serverSubs, db.ref('.info/connected'), 'value', c => {
     if (!c.val()) return;
     const r = db.ref('presence/' + me.uid); r.onDisconnect().remove(); r.set(me.status);
@@ -729,8 +741,10 @@ $('#settings').onclick = () => {
   pendingPhoto = null; $('#s-name').value = me.name; $('#s-photo').value = me.photo.startsWith('data:') ? '' : me.photo; setPrev(me.photo); $('#s-bio').value = me.bio; $('#s-status').value = me.status;
   $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal(); fillTagSelect(); syncNP(); $('#s-uid').value = me.uid;
 };
-$('#s-save').onclick = () => {
-  me.name = $('#s-name').value.trim() || me.name; const lk = $('#s-photo').value.trim(); if (pendingPhoto !== null) me.photo = pendingPhoto; else if (lk !== (me.photo.startsWith('data:') ? '' : me.photo)) me.photo = lk; me.bio = $('#s-bio').value.trim(); me.status = $('#s-status').value;
+$('#s-save').onclick = async () => {
+  const nn = $('#s-name').value.trim().replace(/\s+/g, ' ');
+  if (nn && nn !== me.name) { const r = await claimName(nn); if (!r.ok) return toast(r.msg); me.name = nn; }
+  const lk = $('#s-photo').value.trim(); if (pendingPhoto !== null) me.photo = pendingPhoto; else if (lk !== (me.photo.startsWith('data:') ? '' : me.photo)) me.photo = lk; me.bio = $('#s-bio').value.trim(); me.status = $('#s-status').value;
   const use = $('#s-use').checked; me.c1 = use ? $('#s-c1').value : ''; me.c2 = use ? $('#s-c2').value : '';
   me.tagSid = $('#s-tag').value; paintMe(); saveMe(); $('#st').close();
 };
@@ -1563,7 +1577,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.11.01-moderacao';
+const BUILD = '2026.11.02-conta';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -2180,10 +2194,11 @@ const limitMsg = t => '⏳ Sua conta está limitada até ' + fmtDate(acct.limitU
 const DURS = [['1 hora', 36e5], ['6 horas', 216e5], ['24 horas', 864e5], ['3 dias', 2592e5], ['7 dias', 6048e5], ['30 dias', 2592e6]];
 function initMod() {
   on(serverSubs, db.ref('accounts/' + me.uid), 'value', s => { acct = s.val() || {}; checkBlock(); });
-  on(serverSubs, db.ref('warns/' + me.uid), 'value', s => { warnQ = Object.entries(s.val() || {}).filter(([id, w]) => !w.seen && !shownW.has(id)).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)); showWarn(); });
+  on(serverSubs, db.ref('warns/' + me.uid), 'value', s => { warnAll = s.val() || {}; warnQ = Object.entries(s.val() || {}).filter(([id, w]) => !w.seen && !shownW.has(id)).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)); showWarn(); });
   if (!modTimer) modTimer = setInterval(checkBlock, 30000);
 }
 function checkBlock() {
+  limBar();
   const b = $('#blk'), banned = acct.banned === true, susp = (acct.until || 0) > nowS();
   if (!banned && !susp) { b.hidden = true; return; }
   if (typeof call !== 'undefined' && call) leaveCall();
@@ -2260,9 +2275,9 @@ function apUsers(c) {
       const q = await db.ref('users').orderByChild('lname').equalTo(v.toLowerCase()).limitToFirst(1).get();
       if (q.exists()) { id = Object.keys(q.val())[0]; u = q.val()[id]; } else { const x = (await db.ref('users/' + v).get()).val(); if (x) { id = v; u = x; } }
       if (!id) return res.replaceChildren(el('small', null, 'Usuário não encontrado.'));
-      const a = (await db.ref('accounts/' + id).get()).val() || {}, d = el('div', 'card2'), st = [];
+      const a = (await db.ref('accounts/' + id).get()).val() || {}, d = el('div', 'card2'), st = [], wc = Object.keys((await db.ref('warns/' + id).get()).val() || {}).length;
       if (a.banned) st.push('🔨 banida'); if ((a.until || 0) > nowS()) st.push('⏸ suspensa até ' + fmtDate(a.until)); if ((a.limitUntil || 0) > nowS()) st.push('⏳ limitada até ' + fmtDate(a.limitUntil));
-      d.append(el('b', null, u.name), el('small', null, 'ID: ' + id), el('small', null, 'Situação: ' + (st.join(' · ') || '✅ normal') + (a.reason ? ' · motivo: ' + a.reason : '')));
+      d.append(el('b', null, u.name), el('small', null, 'ID: ' + id), el('small', null, 'Situação: ' + (st.join(' · ') || '✅ normal') + (a.reason ? ' · motivo: ' + a.reason : '')), el('small', null, 'Avisos recebidos: ' + wc));
       const row = el('div', 'pact'); [...ACTS, ['✅ Remover sanções', 'clear']].forEach(([l, ac]) => { const bt = el('button', 'btn ghost', l); bt.onclick = () => openMod(id, u.name, null, ac); row.append(bt); });
       d.append(row); res.replaceChildren(d);
     } catch (e) { res.replaceChildren(el('small', null, 'Erro: ' + e.message)); }
@@ -2304,6 +2319,98 @@ async function applySanction(uid, name, action, dur, reason, reportId) {
   await db.ref('modlog').push({ uid, name, action, dur: dur || null, reason: reason || '', by: me.uid, byName: me.name, ts });
   if (reportId) await db.ref('reports/' + reportId).update({ status: 'resolved', action, handledBy: me.uid, handledName: me.name, handledAt: ts });
 }
+
+/* ---------- NOMES DE USUÁRIO ÚNICOS ---------- */
+let claimWarned = false;
+const nameKey = n => n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
+const RESERVED = ['concordbot', 'concord', 'concord_oficial', 'oficial', 'admin', 'administrador', 'moderacao', 'moderador', 'everyone', 'here', 'bot', 'suporte'];
+async function claimName(name) {
+  const nm = name.trim().replace(/\s+/g, ' '), key = nameKey(nm);
+  if (nm.length < 2 || nm.length > 32 || !key) return { ok: false, msg: 'O nome precisa ter de 2 a 32 caracteres.' };
+  if (!/^[\p{L}\p{N} ._-]+$/u.test(nm)) return { ok: false, msg: 'Use apenas letras, números, espaço, ponto, hífen e sublinhado.' };
+  if (RESERVED.includes(key)) return { ok: false, msg: 'Esse nome é reservado. Escolha outro.' };
+  try {
+    const r = await db.ref('usernames/' + key).transaction(c => (c === null || c === me.uid) ? me.uid : undefined);
+    if (!r.committed || r.snapshot.val() !== me.uid) return { ok: false, msg: 'Esse nome já está em uso por outra conta. Escolha outro.' };
+    const old = nameKey(me.name || '');
+    if (old && old !== key) db.ref('usernames/' + old).transaction(c => c === me.uid ? null : undefined).catch(() => {});
+    return { ok: true };
+  } catch (e) {
+    if (!claimWarned) { claimWarned = true; toast('Nomes únicos ainda não estão ativos: publique as novas regras do Firebase (nó "usernames").'); }
+    return { ok: true, skipped: true };
+  }
+}
+function askName(msg) {
+  return new Promise(res => {
+    const d = $('#nm'), body = $('#nm-body'), i = el('input'), ok = el('button', 'btn', 'Salvar nome'); body.replaceChildren();
+    i.value = ((me.name || 'usuario') + ' ' + Math.floor(100 + Math.random() * 900)).slice(0, 32); i.maxLength = 32;
+    body.append(el('h3', null, '✏️ Escolha o seu nome de usuário'), el('small', null, msg || 'Cada nome só pode ser usado por uma conta.'), i, ok);
+    d.oncancel = e => e.preventDefault();
+    const go = () => { const v = i.value.trim(); if (v.length < 2) return; d.close(); res(v); };
+    ok.onclick = go; i.onkeydown = e => { if (e.key === 'Enter') go(); };
+    d.showModal(); i.select();
+  });
+}
+async function ensureUsername() {
+  let r = await claimName(me.name || ''), msg = r.ok ? '' : r.msg;
+  while (!r.ok) { const nn = await askName(msg); r = await claimName(nn); if (r.ok) me.name = nn.trim().replace(/\s+/g, ' '); else msg = r.msg; }
+}
+
+/* ---------- E-MAIL E SENHA ---------- */
+const reauth = pass => { const u = auth.currentUser; return u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, pass)); };
+const accErr = x => ['auth/wrong-password', 'auth/invalid-credential'].includes(x.code) ? 'Senha atual incorreta.' : msgErr(x);
+function openAccount() {
+  const u = auth.currentUser, d = $('#ac'), body = $('#ac-body'), cl = el('button', 'btn ghost', 'Fechar'); if (!u) return;
+  body.replaceChildren(); cl.type = 'button'; cl.onclick = () => d.close();
+  body.append(el('h3', null, '🔐 E-mail e senha'), el('small', null, 'E-mail atual: ' + (u.email || '—')));
+  if (!u.providerData.some(p => p.providerId === 'password')) { body.append(el('small', null, 'Você entrou com o Google. O e-mail e a senha dessa conta são gerenciados na sua conta Google.'), cl); d.showModal(); return; }
+  const inp = (ph, type, ac) => { const i = el('input'); i.type = type; i.placeholder = ph; if (ac) i.autocomplete = ac; return i; };
+  const ne = inp('Novo e-mail', 'email', 'email'), pe = inp('Senha atual', 'password', 'current-password'), be = el('button', 'btn', 'Alterar e-mail');
+  be.onclick = async () => {
+    const email = ne.value.trim(), dom = (email.split('@')[1] || '').toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return toast('Digite um e-mail válido.');
+    if (TYPOS[dom]) return toast('Esse e-mail parece errado. Você quis dizer ' + email.split('@')[0] + '@' + TYPOS[dom] + '?');
+    if (!pe.value) return toast('Digite a sua senha atual.'); be.disabled = true;
+    try {
+      await reauth(pe.value);
+      try { await u.updateEmail(email); toast('✔ E-mail alterado para ' + email); }
+      catch (x) { if (x.code === 'auth/operation-not-allowed') { await u.verifyBeforeUpdateEmail(email); toast('Enviamos um link de confirmação para ' + email + '. O e-mail muda depois que você clicar nele.'); } else throw x; }
+      pe.value = ne.value = '';
+    } catch (x) { toast(accErr(x)); }
+    be.disabled = false;
+  };
+  const cp = inp('Senha atual', 'password', 'current-password'), np = inp('Nova senha (mínimo 6 caracteres)', 'password', 'new-password'), np2 = inp('Repita a nova senha', 'password', 'new-password'), bp = el('button', 'btn', 'Alterar senha'), br = el('button', 'btn ghost', 'Enviar link de redefinição por e-mail');
+  bp.onclick = async () => {
+    if (np.value.length < 6) return toast('A nova senha precisa ter pelo menos 6 caracteres.'); if (np.value !== np2.value) return toast('As senhas novas não são iguais.'); if (!cp.value) return toast('Digite a sua senha atual.');
+    bp.disabled = true;
+    try { await reauth(cp.value); await u.updatePassword(np.value); toast('✔ Senha alterada!'); cp.value = np.value = np2.value = ''; } catch (x) { toast(accErr(x)); }
+    bp.disabled = false;
+  };
+  br.onclick = () => auth.sendPasswordResetEmail(u.email).then(() => toast('Link enviado para ' + u.email)).catch(x => toast(msgErr(x)));
+  body.append(el('b', null, 'Alterar e-mail'), ne, pe, be, el('b', null, 'Alterar senha'), cp, np, np2, bp, br, cl); d.showModal();
+}
+$('#s-acc').onclick = openAccount;
+
+/* ---------- STATUS DA CONTA (avisos, limite, suspensão, banimento) ---------- */
+let warnAll = {};
+function limBar() {
+  const b = $('#limbar'); if (!b) return; const on_ = limited(); b.hidden = !on_;
+  if (on_) { b.textContent = '⏳ Conta limitada até ' + fmtDate(acct.limitUntil) + ' · só texto, 10 s entre mensagens. Toque para ver o status.'; b.onclick = openStatus; }
+}
+function openStatus() {
+  const d = $('#sx'), body = $('#sx-body'), now = nowS(), banned = acct.banned === true, susp = (acct.until || 0) > now, lim = (acct.limitUntil || 0) > now;
+  const ws = Object.values(warnAll).sort((a, b) => (b.ts || 0) - (a.ts || 0)), cl = el('button', 'btn ghost', 'Fechar'); cl.type = 'button'; cl.onclick = () => d.close(); body.replaceChildren();
+  const state = banned ? '🔨 Banida' : susp ? '⏸ Suspensa' : lim ? '⏳ Limitada' : ws.length ? '⚠️ Com avisos' : '✅ Tudo certo';
+  body.append(el('h3', null, '📋 Status da conta'), el('div', 'pbio', 'Situação: ' + state));
+  const line = (t) => body.append(el('small', null, t));
+  line('⚠️ Avisos recebidos: ' + ws.length + (ws.length ? ' (o último em ' + fmtDate(ws[0].ts || 0) + ')' : ''));
+  line('⏳ Limitação: ' + (lim ? 'ativa até ' + fmtDate(acct.limitUntil) + (acct.limitReason ? ' · motivo: ' + acct.limitReason : '') : 'nenhuma'));
+  line('⏸ Suspensão: ' + (susp ? 'ativa até ' + fmtDate(acct.until) + (acct.reason ? ' · motivo: ' + acct.reason : '') : 'nenhuma'));
+  line('🔨 Banimento: ' + (banned ? 'permanente' + (acct.reason ? ' · motivo: ' + acct.reason : '') : 'nenhum'));
+  if (ws.length) { body.append(el('b', null, 'Histórico de avisos')); ws.slice(0, 10).forEach(w => { const c = el('div', 'pbio', w.text || ''); c.append(el('small', null, '\n' + (w.byName ? w.byName + ' · ' : '') + (w.ts ? fmtDate(w.ts) : '') + (w.seen ? '' : ' · novo'))); body.append(c); }); }
+  body.append(cl); d.showModal();
+}
+$('#s-stat').onclick = openStatus;
 </script>
 </body>
 </html>
