@@ -119,7 +119,7 @@ input[type=color]{padding:2px;height:40px;width:64px}input[type=checkbox]{width:
 .pbio{background:var(--rail);border-radius:8px;padding:10px;margin:12px 0 6px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
 .pact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 #pf form{padding:4px 20px 20px}
-#sv,#bp{position:fixed;inset:0;background:var(--main);z-index:30;display:grid;grid-template-columns:220px 1fr;overflow:hidden}
+#sv,#bp,#ap{position:fixed;inset:0;background:var(--main);z-index:30;display:grid;grid-template-columns:220px 1fr;overflow:hidden}
 .svn{background:var(--side);padding:24px 12px;display:flex;flex-direction:column;gap:4px}
 .svn h4{color:var(--mute);font-size:12px;padding:0 12px 8px}
 .svn button{text-align:left;padding:8px 12px;border-radius:6px;background:none;color:var(--mute)}
@@ -130,7 +130,7 @@ input[type=color]{padding:2px;height:40px;width:64px}input[type=checkbox]{width:
 .chk{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 textarea{background:var(--rail);border:1px solid var(--line);border-radius:6px;padding:10px 12px;width:100%;min-height:90px;font:inherit;color:inherit}
 .bottag{background:var(--green);color:var(--ink);font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-right:6px}
-@media(max-width:700px){#sv,#bp{grid-template-columns:1fr;grid-template-rows:auto 1fr}.svn{flex-direction:row;overflow-x:auto;padding:12px 56px 12px 12px}.svn h4{display:none}.svc{padding:16px}}
+@media(max-width:700px){#sv,#bp,#ap{grid-template-columns:1fr;grid-template-rows:auto 1fr}.svn{flex-direction:row;overflow-x:auto;padding:12px 56px 12px 12px}.svn h4{display:none}.svc{padding:16px}}
 #mp{position:absolute;bottom:52px;left:0;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:240px;max-height:220px;overflow-y:auto;z-index:5}
 #mp button{display:flex;justify-content:space-between;gap:16px;width:100%;text-align:left;background:none;padding:6px 10px;border-radius:4px}
 #mp button:hover{background:var(--hover)}#mp small{color:var(--mute)}
@@ -278,6 +278,10 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 #attmenu button{background:none;text-align:left;padding:10px 14px;border-radius:6px;font-size:15px}#attmenu button:hover{background:var(--hover)}
 .filecard{display:flex;align-items:center;gap:10px;background:var(--rail);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:6px;max-width:min(420px,100%)}
 .filecard .fi{font-size:26px}.filecard .fx{flex:1;min-width:0;display:grid}.filecard .fname{font-weight:600;overflow-wrap:anywhere}
+#blk{position:fixed;inset:0;z-index:70;background:var(--main);display:grid;place-items:center;padding:20px}
+#blk .card{max-width:440px;text-align:center}
+#rp-body,#md-body,#wn-body{display:grid;gap:10px}
+#rp,#md,#wn{width:min(460px,94vw)}
 </style>
 </head>
 <body>
@@ -329,6 +333,12 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 <div id="sv" hidden><nav class="svn" id="svn"></nav><div class="svc" id="svc"></div><button class="icon svx" id="svx" title="Fechar">✕</button></div>
 
 <div id="bp" hidden><nav class="svn" id="bpn"></nav><div class="svc" id="bpc"></div><button class="icon svx" id="bpx" title="Fechar">✕</button></div>
+
+<div id="ap" hidden><nav class="svn" id="apn"></nav><div class="svc" id="apc"></div><button class="icon svx" id="apx" title="Fechar">✕</button></div>
+<div id="blk" hidden></div>
+<dialog id="rp"><div id="rp-body"></div></dialog>
+<dialog id="wn"><div id="wn-body"></div></dialog>
+<dialog id="md"><div id="md-body"></div></dialog>
 
 <dialog id="emb"><div id="emb-body"></div></dialog>
 
@@ -428,7 +438,7 @@ $('#google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthPr
 $('#logout').onclick = () => { leaveCall(); if (me) db.ref('presence/' + me.uid).remove(); auth.signOut(); };
 
 auth.onAuthStateChanged(u => {
-  if (!u) { me = null; checked.clear(); srvInfo = {}; bookSubs = {}; bookData = {}; watched = {}; unread = {}; seenFirst = false; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
+  if (!u) { me = null; checked.clear(); srvInfo = {}; bookSubs = {}; bookData = {}; watched = {}; unread = {}; seenFirst = false; acct = {}; repData = {}; adminWatching = false; warnQ = []; if ($('#blk')) $('#blk').hidden = true; clear(serverSubs); clear(chanSubs); $('#app').hidden = true; $('#auth').hidden = false; return; }
   start(u);
 });
 
@@ -449,7 +459,7 @@ async function start(u) {
   me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0, tagSid: '' };
   $('#auth').hidden = true; $('#app').hidden = false; errBox('');
   try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0, tagSid: p.tagSid || '' }); } catch (e) {}
-  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify(); initNews();
+  me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify(); initNews(); initMod();
   on(serverSubs, db.ref('.info/connected'), 'value', c => {
     if (!c.val()) return;
     const r = db.ref('presence/' + me.uid); r.onDisconnect().remove(); r.set(me.status);
@@ -489,6 +499,7 @@ function renderRail(list) {
 }
 
 $('#mk').onclick = async () => {
+  if (limited()) return toast(limitMsg('não é possível criar servidores'));
   const name = $('#newname').value.trim(); if (!name) return;
   const id = db.ref('servers').push().key, cid = db.ref('channels/' + id).push().key;
   const upd = {};
@@ -639,6 +650,7 @@ function addMsg(key, m) {
   }
   body.append(txt, rx); row.append(body);
   const tools = el('div', 'tools'), rb = el('button', null, '↩'); rb.title = 'Responder'; rb.onclick = () => setReply(key); tools.append(rb);
+  if (m.uid !== me.uid && !m.bot) { const fb = el('button', null, '🚩'); fb.title = 'Denunciar'; fb.onclick = () => { const mm = rows[key].m; openReport({ uid: m.uid, name: m.name, msg: { sid: curServer, cid: curChannel, mid: key, text: (mm.text || '').slice(0, 300), att: !!(mm.att || mm.file || mm.gif || mm.embed || mm.stk) } }); }; tools.append(fb); }
   ['👍', '❤️', '😂', '🎉'].forEach(e => { const b = el('button', null, e); b.onclick = () => react(key, e); tools.append(b); });
   if (m.uid === me.uid || can('msgs')) {
     const ed = el('button', null, '✏️'), del = el('button', null, '🗑');
@@ -666,6 +678,10 @@ async function sendMsg(gifUrl) {
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   if (curServer !== 'dm' && /(^|\s)@(everyone|here)(?![\wÀ-ÿ])/i.test(text) && !can('admin')) return toast('Só o dono ou administradores podem usar @everyone e @here.');
   const am = text ? automod(text) : null; if (am) { toast('🛡 AutoMod: ' + am); return; }
+  if (limited()) {
+    if (pendingAtt || pendingFile || gifUrl || /https?:\/\/|www\./i.test(text)) return toast(limitMsg('apenas texto, sem links, imagens ou arquivos'));
+    const w = 10000 - (Date.now() - lastSend); if (w > 0) return toast('⏳ Modo lento (conta limitada): aguarde ' + Math.ceil(w / 1000) + ' s.');
+  }
   const path = `messages/${curServer}/${curChannel}`;
   box.value = ''; clearTimeout(tTimer); db.ref(`typing/${curChannel}/${me.uid}`).remove();
   const payload = { uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: text.slice(0, 4000), eref: emojiRefs(text), ts: firebase.database.ServerValue.TIMESTAMP };
@@ -680,7 +696,7 @@ async function sendMsg(gifUrl) {
   if (gifUrl) payload.gif = gifUrl;
   const kl = text.match(KLIPY_LINK);
   if (kl && !payload.gif && getKlipyKey()) { try { const g = await klipyBySlug(kl[1]); if (g) payload.gif = g.url; } catch (x) {} }
-  db.ref(path).push(payload);
+  lastSend = Date.now(); db.ref(path).push(payload);
   if (text) { concordBot(text); giveXp(); askAI(text); }
 }
 let tTimer;
@@ -765,6 +781,7 @@ function showHome() {
   on(chanSubs, db.ref('friends/' + me.uid), 'value', s => { lastFriends = s.val() || {}; renderFriends(); });
 }
 async function addFriend() {
+  if (limited()) return toast(limitMsg('não é possível enviar pedidos de amizade'));
   const inp = $('#fname'), n = inp.value.trim().replace(/^@/, '');
   if (!n) return toast('Digite o nome de usuário do seu amigo.');
   try {
@@ -784,7 +801,7 @@ async function addFriend() {
 }
 async function renderFriends() {
   const L = $('#flist'); if (!curHome || !L) return;
-  const tk = ++rtk, nodes = [el('h4', null, 'Concord'), officialRow(), el('h4', null, 'Mensagens diretas')];
+  const tk = ++rtk, nodes = [el('h4', null, 'Concord'), officialRow(), ...(siteAdmin ? [adminRow()] : []), el('h4', null, 'Mensagens diretas')];
   { const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'ConcordBot'), tg = el('span', 'bottag', 'BOT'); nm.style.flex = 1;
     w.append(botAv(), el('span', 'dot online')); r.append(w, nm, tg); r.onclick = () => openDM('bot_concord', 'ConcordBot'); decorate(r, 'dm/' + dmId('bot_concord')); nodes.push(r); }
   for (const [title, st] of [['Pedidos recebidos', 'incoming'], ['Amigos', 'friend'], ['Pedidos enviados', 'outgoing']]) {
@@ -802,7 +819,7 @@ async function renderFriends() {
       nodes.push(row);
     }
   }
-  if (nodes.length <= 4) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
+  if (nodes.length <= (siteAdmin ? 5 : 4)) nodes.push(el('div', 'empty', 'Nenhum amigo ainda.'));
   L.replaceChildren(...nodes);
 }
 function openDM(id, name) {
@@ -856,6 +873,7 @@ function goFull(t) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.tile.fs').forEach(t => t.classList.remove('fs')); });
 async function joinCall(room) {
+  if (limited()) return toast(limitMsg('não é possível entrar em chamadas'));
   if (call) leaveCall();
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
@@ -935,7 +953,7 @@ async function showProfile(id) {
     else if (st === 'outgoing') ab('Pedido enviado', 'ghost', () => {}, true);
     else if (st === 'incoming') ab('Aceitar pedido', '', () => setF(id, 'friend'));
     else ab('Adicionar amigo', '', async () => { try { await db.ref().update({ [`friends/${me.uid}/${id}`]: 'outgoing', [`friends/${id}/${me.uid}`]: 'incoming' }); toast('Pedido enviado!'); } catch (e) { toast('Erro: ' + e.message); } });
-    ab('💬 Mensagem', 'ghost', () => openDM(id, u.name)); ab('📞 Ligar', 'ghost', () => callDM(id, u.name));
+    ab('💬 Mensagem', 'ghost', () => openDM(id, u.name)); ab('📞 Ligar', 'ghost', () => callDM(id, u.name)); ab('🚩 Denunciar', 'ghost', () => openReport({ uid: id, name: u.name })); if (siteAdmin) ab('🛡 Moderar', 'ghost', () => openMod(id, u.name, null, 'warn'));
   }
   info.append(av, h, el('small', null, label + (u.since ? ' · Membro desde ' + new Date(u.since).toLocaleDateString('pt-BR') : '')), el('div', 'pbio', u.bio || 'Sem descrição ainda.'), act);
   box.append(ban, info); d.showModal();
@@ -1545,7 +1563,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.10.31-anexos';
+const BUILD = '2026.11.01-moderacao';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -1649,6 +1667,7 @@ function svExpr(c) {
 }
 function sendSticker(id, sid) {
   if (!curChannel || curChannel === 'news') return;
+  if (limited()) return toast(limitMsg('apenas mensagens de texto'));
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   const path = curServer === 'dm' ? `messages/dm/${curChannel}` : `messages/${curServer}/${curChannel}`;
   db.ref(path).push({ uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: '', stk: id, stks: sid, ts: firebase.database.ServerValue.TIMESTAMP });
@@ -1861,7 +1880,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && cu
 let siteAdmin = false;
 function initNews() {
   loadKlipyShared();
-  on(serverSubs, db.ref('admins/' + me.uid), 'value', s => { siteAdmin = s.val() === true; });
+  on(serverSubs, db.ref('admins/' + me.uid), 'value', s => { siteAdmin = s.val() === true; if (siteAdmin) startAdminWatch(); badges(); });
   att['dm/news'] = Date.now(); if (!('dm/news' in readT)) readT['dm/news'] = nowS();
   const q = db.ref('news').limitToLast(1), fn = snap => { const p = snap.val() || {}; onNew('dm/news', { uid: p.by || 'official', name: 'Concord Oficial', text: p.title || 'Nova novidade', ts: p.ts }); };
   q.on('child_added', fn); serverSubs.push(() => q.off('child_added', fn));
@@ -2056,6 +2075,7 @@ function cleanEmbed(E) {
   return { title: (E.title || '').trim().slice(0, 100), desc: (E.desc || '').trim().slice(0, 2000), color: /^#[0-9a-f]{6}$/i.test(E.color) ? E.color : '#73cb27', fields: f, img: okUrl(E.img) ? E.img : '', thumb: okUrl(E.thumb) && !/^data:/.test(E.thumb) ? E.thumb : '', footer: (E.footer || '').trim().slice(0, 100) };
 }
 function sendEmbed(e) {
+  if (limited()) return toast(limitMsg('apenas mensagens de texto'));
   if (!(e.title || e.desc || e.fields.length || e.img)) return toast('O embed está vazio. Preencha ao menos o título ou a descrição.');
   if (!canSend()) return toast('Você não pode enviar mensagens aqui (canal restrito ou você está silenciado).');
   db.ref(`messages/${curServer}/${curChannel}`).push({ uid: me.uid, name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2, nitro: true, text: '', embed: e, ts: firebase.database.ServerValue.TIMESTAMP });
@@ -2150,6 +2170,140 @@ document.addEventListener('paste', e => {
   let f = cd.files && cd.files[0]; if (!f) for (const it of (cd.items || [])) if (it.kind === 'file') { f = it.getAsFile(); break; }
   if (!f) return; e.preventDefault(); f.type.startsWith('image/') ? setAtt(f) : setFile(f);
 });
+
+/* ---------- MODERAÇÃO DA CONTA: avisos, limites, suspensão, banimento e denúncias ---------- */
+let acct = {}, repData = {}, adminWatching = false, warnQ = [], lastSend = 0, lastReport = 0, modTimer = 0, apTab = 'reports', showResolved = false;
+const shownW = new Set();
+const fmtDate = ms => new Date(ms).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+const limited = () => (acct.limitUntil || 0) > nowS();
+const limitMsg = t => '⏳ Sua conta está limitada até ' + fmtDate(acct.limitUntil || Date.now()) + ' (' + t + ').' + (acct.limitReason ? ' Motivo: ' + acct.limitReason : '');
+const DURS = [['1 hora', 36e5], ['6 horas', 216e5], ['24 horas', 864e5], ['3 dias', 2592e5], ['7 dias', 6048e5], ['30 dias', 2592e6]];
+function initMod() {
+  on(serverSubs, db.ref('accounts/' + me.uid), 'value', s => { acct = s.val() || {}; checkBlock(); });
+  on(serverSubs, db.ref('warns/' + me.uid), 'value', s => { warnQ = Object.entries(s.val() || {}).filter(([id, w]) => !w.seen && !shownW.has(id)).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)); showWarn(); });
+  if (!modTimer) modTimer = setInterval(checkBlock, 30000);
+}
+function checkBlock() {
+  const b = $('#blk'), banned = acct.banned === true, susp = (acct.until || 0) > nowS();
+  if (!banned && !susp) { b.hidden = true; return; }
+  if (typeof call !== 'undefined' && call) leaveCall();
+  b.replaceChildren(); const c = el('div', 'card'), out = el('button', 'btn', 'Sair da conta'); out.onclick = () => auth.signOut();
+  c.append(el('h1', null, banned ? '🔨 Conta banida' : '⏸ Conta suspensa'), el('p', null, banned ? 'Sua conta foi banida permanentemente do Concord.' : 'Sua conta está suspensa até ' + fmtDate(acct.until) + '. Você poderá usar o Concord de novo depois desse horário.'),
+    el('p', null, 'Motivo: ' + (acct.reason || 'não informado')), out); b.append(c); b.hidden = false;
+}
+function showWarn() {
+  const d = $('#wn'); if (d.open || !warnQ.length || !$('#blk').hidden) return;
+  const [id, w] = warnQ[0], body = $('#wn-body'), ok = el('button', 'btn', 'Entendi'); shownW.add(id); body.replaceChildren();
+  body.append(el('h3', null, '⚠️ Aviso da equipe do Concord'), el('div', 'pbio', w.text || ''), el('small', null, (w.byName ? 'De: ' + w.byName + ' · ' : '') + (w.ts ? fmtDate(w.ts) : '')), ok);
+  ok.onclick = () => { db.ref(`warns/${me.uid}/${id}/seen`).set(true).catch(() => {}); d.close(); };
+  d.onclose = () => setTimeout(showWarn, 300); d.showModal();
+}
+/* ---- denúncia (qualquer usuário) ---- */
+function openReport(ctx) {
+  const d = $('#rp'), body = $('#rp-body'), sel = el('select'), tx = el('textarea'), ok = el('button', 'btn', '🚩 Enviar denúncia'), cl = el('button', 'btn ghost', 'Cancelar'); body.replaceChildren();
+  ['Spam ou propaganda', 'Assédio ou ofensas', 'Conteúdo impróprio', 'Golpe ou phishing', 'Ameaças', 'Outro motivo'].forEach(t => { const o = el('option', null, t); o.value = t; sel.append(o); });
+  tx.placeholder = 'Detalhes (opcional): conte o que aconteceu'; tx.maxLength = 500;
+  body.append(el('h3', null, 'Denunciar ' + ctx.name), el('small', null, ctx.msg ? 'Mensagem: ' + (ctx.msg.text || '(sem texto)').slice(0, 200) : 'Você está denunciando a conta inteira.'), sel, tx, ok, cl);
+  ok.onclick = async () => {
+    if (Date.now() - lastReport < 20000) return toast('Aguarde um pouco antes de enviar outra denúncia.');
+    try { await db.ref('reports').push({ by: me.uid, byName: me.name, target: ctx.uid, targetName: ctx.name, reason: sel.value, details: tx.value.trim(), msg: ctx.msg || null, status: 'open', ts: firebase.database.ServerValue.TIMESTAMP }); lastReport = Date.now(); d.close(); toast('Denúncia enviada à equipe. Obrigado! 🙏'); }
+    catch (e) { toast(/permission/i.test(e.message) ? 'Sem permissão: publique as novas regras do Firebase.' : 'Erro: ' + e.message); }
+  };
+  cl.onclick = () => d.close(); d.showModal();
+}
+/* ---- painel dos administradores ---- */
+function startAdminWatch() {
+  if (adminWatching) return; adminWatching = true; let first = true;
+  on(serverSubs, db.ref('reports').limitToLast(100), 'value', s => {
+    const prev = Object.keys(repData); repData = s.val() || {};
+    if (!first) { const add = Object.entries(repData).filter(([id, r]) => r.status !== 'resolved' && !prev.includes(id)); if (add.length) { beep(); toast('🚩 Nova denúncia contra ' + (add[0][1].targetName || '?'), 'Ver', () => openAP('reports')); } }
+    first = false; badges(); if (!$('#ap').hidden) renderAP();
+  });
+}
+function adminRow() {
+  const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'Moderação'), ic = el('div', 'av', '🛡'), n = Object.values(repData).filter(x => x.status !== 'resolved').length;
+  ic.style.background = '#2a3a32'; nm.style.flex = 1; w.append(ic); r.append(w, nm); if (n) r.append(el('span', 'nb red', String(n))); r.onclick = () => openAP('reports'); return r;
+}
+function openAP(t) { if (!siteAdmin) return toast('Só administradores do Concord acessam a moderação.'); apTab = t || apTab; $('#ap').hidden = false; closeDrawers(); renderAP(); }
+$('#apx').onclick = () => $('#ap').hidden = true;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#ap').hidden = true; });
+function renderAP() {
+  const n = $('#apn'), c = $('#apc'), h = el('div', 'bphead'), open = Object.values(repData).filter(r => r.status !== 'resolved').length; n.replaceChildren(); c.replaceChildren(); h.append(el('b', null, '🛡 Moderação')); n.append(h);
+  [['reports', '🚩 Denúncias' + (open ? ' (' + open + ')' : '')], ['users', '👤 Usuários'], ['log', '📜 Histórico']].forEach(([k, l]) => { const b = el('button', k === apTab ? 'on' : '', l); b.onclick = () => { apTab = k; renderAP(); }; n.append(b); });
+  ({ reports: apReports, users: apUsers, log: apLog })[apTab](c);
+}
+const ACTS = [['⚠️ Avisar', 'warn'], ['⏳ Limitar', 'limit'], ['⏸ Suspender', 'suspend'], ['🔨 Banir', 'ban']];
+function reportCard(id, r, actionable) {
+  const d = el('div', 'card2'); d.append(el('b', null, '🚩 ' + r.reason + ' · ' + (r.ts ? fmtDate(r.ts) : '')), el('small', null, 'Denunciado: ' + r.targetName + ' (' + r.target + ') · Por: ' + r.byName));
+  if (r.msg) d.append(el('div', 'pbio', r.msg.text ? '“' + r.msg.text + '”' : (r.msg.att ? '(mensagem com mídia ou anexo)' : '(sem texto)')));
+  if (r.details) d.append(el('small', null, 'Detalhes: ' + r.details));
+  if (actionable) {
+    const row = el('div', 'pact'); ACTS.forEach(([l, a]) => { const b = el('button', 'btn ghost', l); b.onclick = () => openMod(r.target, r.targetName, id, a); row.append(b); });
+    const ar = el('button', 'btn ghost', '✅ Arquivar'); ar.onclick = () => db.ref('reports/' + id).update({ status: 'resolved', action: 'arquivada', handledBy: me.uid, handledName: me.name, handledAt: firebase.database.ServerValue.TIMESTAMP }); row.append(ar); d.append(row);
+  } else d.append(el('small', null, '✔ Resolvida por ' + (r.handledName || '?') + ': ' + (r.action || '')));
+  return d;
+}
+function apReports(c) {
+  c.append(el('h2', null, '🚩 Denúncias'));
+  const all = Object.entries(repData).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0)), op = all.filter(([, r]) => r.status !== 'resolved'), done = all.filter(([, r]) => r.status === 'resolved').slice(0, 15);
+  if (!op.length) c.append(el('div', 'empty', 'Nenhuma denúncia aberta. 🎉'));
+  op.forEach(([id, r]) => c.append(reportCard(id, r, true)));
+  const t = el('button', 'btn ghost', (showResolved ? 'Ocultar' : 'Mostrar') + ' resolvidas (' + done.length + ')'); t.onclick = () => { showResolved = !showResolved; renderAP(); }; c.append(t);
+  if (showResolved) done.forEach(([id, r]) => c.append(reportCard(id, r, false)));
+}
+function apUsers(c) {
+  c.append(el('h2', null, '👤 Usuários'));
+  const f = el('div', 'card2'), i = el('input'), b = el('button', 'btn', 'Buscar'), res = el('div'); i.placeholder = 'Nome de usuário ou ID'; f.append(el('small', null, 'Busque pelo nome exato ou cole o ID da conta.'), i, b); c.append(f, res);
+  const go = async () => {
+    const v = i.value.trim(); if (!v) return; res.replaceChildren(el('small', null, 'Buscando…')); let id = null, u = null;
+    try {
+      const q = await db.ref('users').orderByChild('lname').equalTo(v.toLowerCase()).limitToFirst(1).get();
+      if (q.exists()) { id = Object.keys(q.val())[0]; u = q.val()[id]; } else { const x = (await db.ref('users/' + v).get()).val(); if (x) { id = v; u = x; } }
+      if (!id) return res.replaceChildren(el('small', null, 'Usuário não encontrado.'));
+      const a = (await db.ref('accounts/' + id).get()).val() || {}, d = el('div', 'card2'), st = [];
+      if (a.banned) st.push('🔨 banida'); if ((a.until || 0) > nowS()) st.push('⏸ suspensa até ' + fmtDate(a.until)); if ((a.limitUntil || 0) > nowS()) st.push('⏳ limitada até ' + fmtDate(a.limitUntil));
+      d.append(el('b', null, u.name), el('small', null, 'ID: ' + id), el('small', null, 'Situação: ' + (st.join(' · ') || '✅ normal') + (a.reason ? ' · motivo: ' + a.reason : '')));
+      const row = el('div', 'pact'); [...ACTS, ['✅ Remover sanções', 'clear']].forEach(([l, ac]) => { const bt = el('button', 'btn ghost', l); bt.onclick = () => openMod(id, u.name, null, ac); row.append(bt); });
+      d.append(row); res.replaceChildren(d);
+    } catch (e) { res.replaceChildren(el('small', null, 'Erro: ' + e.message)); }
+  };
+  b.onclick = go; i.onkeydown = e => { if (e.key === 'Enter') go(); };
+}
+async function apLog(c) {
+  c.append(el('h2', null, '📜 Histórico de sanções')); const box = el('div'); c.append(box);
+  try {
+    const l = Object.values((await db.ref('modlog').limitToLast(50).get()).val() || {}).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    if (!l.length) box.append(el('div', 'empty', 'Nenhuma sanção aplicada ainda.'));
+    l.forEach(x => { const d = el('div', 'card2'), dur = (DURS.find(y => y[1] === x.dur) || [])[0]; d.append(el('b', null, ({ warn: '⚠️ Aviso', limit: '⏳ Limite', suspend: '⏸ Suspensão', ban: '🔨 Banimento', clear: '✅ Sanções removidas' })[x.action] + (dur ? ' (' + dur + ')' : '') + ' — ' + x.name), el('small', null, fmtDate(x.ts || 0) + ' · por ' + x.byName + (x.reason ? ' · ' + x.reason : ''))); box.append(d); });
+  } catch (e) { box.append(el('small', null, 'Erro: ' + e.message)); }
+}
+function openMod(uid, name, reportId, action) {
+  const d = $('#md'), body = $('#md-body'), ac = el('select'), du = el('select'), rs = el('textarea'), ok = el('button', 'btn', 'Aplicar'), cl = el('button', 'btn ghost', 'Cancelar'); body.replaceChildren();
+  [['warn', '⚠️ Avisar'], ['limit', '⏳ Limitar temporariamente'], ['suspend', '⏸ Suspender temporariamente'], ['ban', '🔨 Banir permanentemente'], ['clear', '✅ Remover todas as sanções']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; ac.append(o); }); ac.value = action || 'warn';
+  DURS.forEach(([l, v]) => { const o = el('option', null, l); o.value = v; du.append(o); }); du.value = 864e5; rs.placeholder = 'Motivo (o usuário verá isso)'; rs.maxLength = 300;
+  const sync = () => { du.hidden = !['limit', 'suspend'].includes(ac.value); }; ac.onchange = sync; sync();
+  body.append(el('h3', null, '🛡 Moderar ' + name), el('small', null, 'ID: ' + uid), ac, du, rs, ok, cl);
+  ok.onclick = async () => {
+    const a = ac.value; if (a !== 'clear' && !rs.value.trim()) return toast('Escreva o motivo.'); if (a === 'ban' && !confirm('Banir ' + name + ' permanentemente?')) return;
+    ok.disabled = true;
+    try { await applySanction(uid, name, a, +du.value, rs.value.trim(), reportId); d.close(); toast('Sanção aplicada.'); }
+    catch (e) { toast(/permission/i.test(e.message) ? 'Sem permissão: publique as novas regras do Firebase (administradores não podem ser sancionados).' : 'Erro: ' + e.message); }
+    ok.disabled = false;
+  };
+  cl.onclick = () => d.close(); d.showModal();
+}
+async function applySanction(uid, name, action, dur, reason, reportId) {
+  if (uid === me.uid) throw new Error('Você não pode se sancionar.');
+  if ((await db.ref('admins/' + uid).get()).val() === true) throw new Error('Administradores não podem ser sancionados.');
+  const ts = firebase.database.ServerValue.TIMESTAMP, now = nowS(), a = db.ref('accounts/' + uid), warn = text => db.ref('warns/' + uid).push({ text, by: me.uid, byName: me.name, ts, seen: false });
+  if (action === 'warn') await warn(reason);
+  if (action === 'limit') { await a.update({ limitUntil: now + dur, limitReason: reason }); await warn('Sua conta foi limitada até ' + fmtDate(now + dur) + ': só mensagens de texto, sem links ou anexos, com intervalo de 10 segundos entre mensagens. Motivo: ' + reason); }
+  if (action === 'suspend') await a.update({ until: now + dur, reason });
+  if (action === 'ban') await a.update({ banned: true, reason });
+  if (action === 'clear') await a.update({ banned: null, until: null, limitUntil: null, reason: null, limitReason: null });
+  await db.ref('modlog').push({ uid, name, action, dur: dur || null, reason: reason || '', by: me.uid, byName: me.name, ts });
+  if (reportId) await db.ref('reports/' + reportId).update({ status: 'resolved', action, handledBy: me.uid, handledName: me.name, handledAt: ts });
+}
 </script>
 </body>
 </html>
