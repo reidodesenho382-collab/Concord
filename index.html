@@ -1506,14 +1506,18 @@ const BP = {
 
 /* ---------- DM de boas-vindas do ConcordBot ---------- */
 const OFFICIAL = 'https://reidodesenho382-collab.github.io/Concord/?invite=-P4GYMqcIDLEy5yvHyAA';
+const SUPPORT = 'https://reidodesenho382-collab.github.io/concord-support/';
 async function botDM() {
   try {
-    const ref = db.ref(`messages/dm/${dmId('bot_concord')}`);
-    if ((await ref.limitToFirst(1).get()).exists()) return;
-    await ref.push({
-      uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', ts: firebase.database.ServerValue.TIMESTAMP,
-      text: `👋 Olá, ${me.name}! Eu sou o ConcordBot, e seja bem-vindo(a) ao Concord!\nEntre no nosso servidor oficial para conhecer a comunidade, ver as novidades e tirar dúvidas:\n${OFFICIAL}\nÉ só tocar no link para entrar. Digite !ajuda para ver tudo o que eu faço. 🤖`
-    });
+    const flag = db.ref(`users/${me.uid}/welcomeV`);
+    if (((await flag.get()).val() || 0) >= 2) return;
+    const ref = db.ref(`messages/dm/${dmId('bot_concord')}`), first = !(await ref.limitToFirst(1).get()).exists();
+    const text = first
+      ? `👋 Olá, ${me.name}! Eu sou o ConcordBot, e seja bem-vindo(a) ao Concord!\nEntre no nosso servidor oficial para conhecer a comunidade, ver as novidades e tirar dúvidas:\n${OFFICIAL}\nÉ só tocar no link para entrar. Digite !ajuda para ver tudo o que eu faço. 🤖\n\n🛟 Precisa de ajuda? Se a sua conta for hackeada, banida injustamente ou se você encontrar um bug, relate no site de suporte:\n${SUPPORT}`
+      : `🛟 Aviso importante: se a sua conta for hackeada, banida injustamente ou se você encontrar um bug, relate no site de suporte do Concord:\n${SUPPORT}`;
+    await ref.push({ uid: me.uid, bot: 'concord', name: 'ConcordBot', photo: '', ts: firebase.database.ServerValue.TIMESTAMP, text, wv: 2 });
+    await flag.set(2);
+    unread['dm/' + dmId('bot_concord')] = { n: 1, mention: true }; badges();
     toast('🤖 ConcordBot te enviou uma mensagem', 'Abrir', () => openDM('bot_concord', 'ConcordBot'));
   } catch (e) { toast('ConcordBot (DM): ' + (/permission/i.test(e.message) ? 'sem permissão no Firebase. Publique as regras do Realtime Database.' : e.message)); }
 }
@@ -1577,7 +1581,7 @@ const _h3 = CB['!ajuda'];
 CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setkey SUA_CHAVE e depois @ConcordBot sua pergunta';
 
 /* ---------- acesso ao painel e versão ---------- */
-const BUILD = '2026.11.02-conta';
+const BUILD = '2026.11.04-suporte';
 Object.assign(CB, {
   '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
@@ -2336,7 +2340,7 @@ async function claimName(name) {
     if (old && old !== key) db.ref('usernames/' + old).transaction(c => c === me.uid ? null : undefined).catch(() => {});
     return { ok: true };
   } catch (e) {
-    if (!claimWarned) { claimWarned = true; toast('Nomes únicos ainda não estão ativos: publique as novas regras do Firebase (nó "usernames").'); }
+    if (!claimWarned) { claimWarned = true; console.warn('usernames:', e); toast('Nomes únicos não estão ativos (' + (/permission/i.test(e.message) ? 'o Firebase negou a permissão: publique as regras completas, com o nó "usernames"' : e.message) + '). O app continua funcionando normalmente.'); }
     return { ok: true, skipped: true };
   }
 }
@@ -2411,6 +2415,10 @@ function openStatus() {
   body.append(cl); d.showModal();
 }
 $('#s-stat').onclick = openStatus;
+
+CB['!suporte'] = () => '🛟 Suporte do Concord\nSe a sua conta for hackeada, banida injustamente ou se você encontrar um bug, relate no site de suporte:\n' + SUPPORT;
+const _h7 = CB['!ajuda'];
+CB['!ajuda'] = () => _h7() + '\n🛟 Suporte: ' + (cfg.prefix || '!') + 'suporte (conta hackeada, banimento injusto ou bugs)';
 </script>
 </body>
 </html>
