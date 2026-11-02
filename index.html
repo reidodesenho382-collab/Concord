@@ -651,6 +651,7 @@ function inlineInto(box, chunk, ts) {
   return ping;
 }
 function renderText(box, text, ts, eref) {
+  text = String(text == null ? '' : text).split('-P4GYMqcIDLEy5yvHyAA').join('-P5PVdqNPz6WZXUF2fmV'); /* link antigo do servidor oficial -> novo */
   curEref = eref || null;
   text = text.replace(/gsk_[A-Za-z0-9]{16,}/g, 'gsk_••••••••');
   { const nn = text.match(/:[a-z0-9_]{2,32}:/gi); box.classList.toggle('bigemo', !!nn && nn.length <= 5 && /^(\s*:[a-z0-9_]{2,32}:\s*)+$/i.test(text) && nn.every(n => findEmoji(n.slice(1, -1).toLowerCase()))); }
@@ -1473,7 +1474,7 @@ $('#bpbtn').onclick = () => openBotSite();
 const botJoined = () => !!cfg && cfg.joined !== false && (!!cfg.joined || Object.keys(cfg).length > 0);
 
 /* ---------- DM de boas-vindas do ConcordBot ---------- */
-const OFFICIAL = 'https://reidodesenho382-collab.github.io/Concord/?invite=-P4GYMqcIDLEy5yvHyAA';
+const OFFICIAL = 'https://reidodesenho382-collab.github.io/Concord/?invite=-P5PVdqNPz6WZXUF2fmV';
 const SUPPORT = 'https://reidodesenho382-collab.github.io/concord-support/';
 async function botDM() {
   try {
