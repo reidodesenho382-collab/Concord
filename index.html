@@ -323,7 +323,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
   <div id="scrim"></div>
   <nav class="rail" id="rail"></nav>
   <aside class="side">
-    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="obbtn" title="Onboarding: escolher cargos" hidden>🎯</button><button class="icon" id="bpbtn" title="Painel do ConcordBot" hidden>🤖</button><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
+    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="obbtn" title="Onboarding: escolher cargos" hidden>🎯</button><button class="icon" id="bpbtn" title="Painel do ConcordBot (site separado)">🤖</button><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
     <div id="chans"></div>
     <div class="me"><div id="meav"></div><b id="mename"></b><button class="icon" id="settings" title="Configurações">⚙</button><button class="icon" id="logout" title="Sair">⏻</button></div>
   </aside>
@@ -352,7 +352,6 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 
 <div id="sv" hidden><nav class="svn" id="svn"></nav><div class="svc" id="svc"></div><button class="icon svx" id="svx" title="Fechar">✕</button></div>
 
-<div id="bp" hidden><nav class="svn" id="bpn"></nav><div class="svc" id="bpc"></div><button class="icon svx" id="bpx" title="Fechar">✕</button></div>
 
 <dialog id="ob"><div id="ob-body"></div></dialog>
 <div id="blk" hidden></div>
@@ -585,7 +584,7 @@ function selectServer(id, name) {
   on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); obCheck(); svRefresh(); });
   on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
   on(subs, db.ref('obRoles/' + id), 'value', s => { oroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
-  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; $('#obbtn').hidden = !(cfg.ob && cfg.ob.on && obQs().length); obCheck(); svRefresh(); bpRefresh(); Object.keys(rows).forEach(k => fill(k)); });
+  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; $('#obbtn').hidden = !(cfg.ob && cfg.ob.on && obQs().length); obCheck(); svRefresh(); renderMembers(); Object.keys(rows).forEach(k => fill(k)); });
   on(subs, db.ref('servers/' + id + '/cats'), 'value', s => { curCats = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
   on(subs, db.ref('mutes/' + id), 'value', s => { mutes = s.val() || {}; });
@@ -755,7 +754,7 @@ $('#box').addEventListener('input', () => {
 /* ---------- membros ---------- */
 function renderMembers() {
   const box = $('#mem'); box.replaceChildren();
-  if (curServer && curServer !== 'dm') { const r = el('div', 'u'), t = el('span', 'bottag', 'BOT'); t.style.marginLeft = '6px'; r.append(botAv(), el('span', null, 'ConcordBot'), t); r.style.cursor = 'pointer'; r.title = 'Abrir painel do ConcordBot'; r.onclick = () => openBP(); box.append(el('h4', null, 'Bots'), r); }
+  if (curServer && curServer !== 'dm' && botJoined()) { const r = el('div', 'u'), t = el('span', 'bottag', 'BOT'); t.style.marginLeft = '6px'; r.append(botAv(), el('span', null, 'ConcordBot'), t); r.style.cursor = 'pointer'; r.title = 'Abrir painel do ConcordBot'; r.onclick = () => openBotSite(); box.append(el('h4', null, 'Bots'), r); }
   const all = Object.entries(members);
   const on_ = all.filter(([id]) => presence[id]), off = all.filter(([id]) => !presence[id]);
   [['Online — ' + on_.length, on_], ['Offline — ' + off.length, off]].forEach(([t, arr]) => {
@@ -819,7 +818,7 @@ function showHome() {
   if (innerWidth <= 700) document.body.classList.add('nav-open');
   clear(chanSubs); clear(msgSubs); curHome = true; curServer = null; curChannel = null; members = {}; renderMembers();
   document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('home')));
-  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#bpbtn').hidden = true; $('#obbtn').hidden = true; $('#bp').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
+  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#obbtn').hidden = true; $('#bp').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
   $('#msgs').replaceChildren(el('div', 'empty', 'Adicione amigos pelo nome de usuário, converse por mensagem direta e ligue para eles.'));
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Enviar mensagem';
   const c = $('#chans'); c.replaceChildren();
@@ -1018,7 +1017,7 @@ const roleColor = uid => { const r = Object.keys({ ...(oroles[uid] || {}), ...(m
 function calcPerms() {
   myRoles = { ...(oroles[me.uid] || {}), ...(mroles[me.uid] || {}) }; perms = {};
   Object.keys(mroles[me.uid] || {}).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
-  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; $('#bpbtn').hidden = !curServer || curServer === 'dm'; renderChans();
+  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; renderChans();
 }
 let curCats = {};
 const byPos = (x, y) => (x[1].pos ?? 1e9) - (y[1].pos ?? 1e9);
@@ -1051,7 +1050,7 @@ function renderSV() {
   const n = $('#svn'), c = $('#svc'); n.replaceChildren(); c.replaceChildren(); n.append(el('h4', null, $('#sname').textContent));
   const tabs = [['general', 'Geral', true], ['panel', '🤖 Painel do ConcordBot', true], ['channels', 'Canais', can('channels')], ['roles', 'Cargos', isOwner()], ['members', 'Membros', isOwner()], ['expr', '🎭 Emojis e figurinhas', isOwner()]].filter(t => t[2]);
   if (!tabs.some(t => t[0] === svTab) && tabs[0]) svTab = tabs[0][0];
-  tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { if (k === 'panel') { $('#sv').hidden = true; return openBP(); } svTab = k; editCh = null; renderSV(); }; n.append(b); });
+  tabs.forEach(([k, l]) => { const b = el('button', k === svTab ? 'on' : '', l); b.onclick = () => { if (k === 'panel') { $('#sv').hidden = true; return openBotSite(); } svTab = k; editCh = null; renderSV(); }; n.append(b); });
   ({ general: svGeneral, channels: svChannels, roles: svRoles, members: svMembers, expr: svExpr })[svTab](c);
 }
 function roleChecks(title, sel) {
@@ -1194,7 +1193,7 @@ const checked = new Set();
 function svGeneral(c) {
   const id = curServer, link = location.origin + location.pathname + '?invite=' + id;
   c.append(el('h2', null, 'Geral')); if (isOwner()) { svIdentity(c); svTag(c); }
-  const pb = el('button', 'btn', '🤖 Abrir painel do ConcordBot'); pb.onclick = () => { $('#sv').hidden = true; openBP(); }; c.append(pb);
+  const pb = el('button', 'btn', '🤖 Abrir painel do ConcordBot'); pb.onclick = () => { $('#sv').hidden = true; openBotSite(); }; c.append(pb);
   const inv = el('div', 'card2'), lk = el('small', null, link), cp = el('button', 'btn ghost', 'Copiar link de convite');
   lk.style.overflowWrap = 'anywhere'; cp.onclick = () => { navigator.clipboard?.writeText(link); toast('Link copiado!'); };
   inv.append(el('h3', null, 'Convite'), lk, cp); c.append(inv);
@@ -1264,6 +1263,7 @@ const CB = {
   }
 };
 async function concordBot(text) {
+  if (!botJoined()) return;
   const px = cfg.prefix || '!'; if (!text.startsWith(px)) return; text = '!' + text.slice(px.length);
   const [c, ...a] = text.trim().split(/\s+/), cmd = c.toLowerCase(), cu = Object.values(cfg.cmds || {}).find(x => '!' + x.name === cmd);
   const f = cu ? () => (cu.admin && !can('admin') ? '⛔ Só administradores podem usar este comando.' : { title: cu.title || '', desc: fillVars(cu.reply), color: '#73cb27', footer: 'ConcordBot · ' + cmd }) : CB[cmd]; if (!f) return; if (CAT[cmd] && (cfg.off || {})[CAT[cmd]]) return;
@@ -1454,89 +1454,12 @@ const _h2 = CB['!ajuda'];
 CB['!ajuda'] = () => _h2() + (cfg.xp && cfg.xp.on ? '\n📈 Níveis: ' + ['nivel', 'rank'].map(x => (cfg.prefix || '!') + x).join(' ') : '');
 
 /* ---------- PAINEL DO CONCORDBOT ---------- */
-let bpTab = 'home';
 const R = () => db.ref('botcfg/' + curServer);
-const bpRefresh = () => { if (!$('#bp').hidden && !(document.activeElement && document.activeElement.closest('#bpc input,#bpc textarea,#bpc select'))) renderBP(); };
-function openBP(t) {
-  if (!isOwner()) return toast('Só o dono do servidor acessa o painel do ConcordBot.');
-  bpTab = t || bpTab; $('#bp').hidden = false; renderBP();
-}
-$('#bpbtn').onclick = () => openBP(); $('#bpx').onclick = () => $('#bp').hidden = true;
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#bp').hidden = true; });
-function kit(c) {
-  return {
-    card: t => { const d = el('div', 'card2'); if (t) d.append(el('h3', null, t)); c.append(d); return d; },
-    inp: (ph, v, type) => { const i = el('input'); i.placeholder = ph; i.value = v ?? ''; if (type) i.type = type; return i; },
-    chk: (t, v, fn) => { const l = el('label', 'chk'), i = el('input'); i.type = 'checkbox'; i.className = 'sw'; i.checked = !!v; if (fn) i.onchange = () => fn(i.checked); l.append(i, el('span', null, t)); l.input = i; return l; },
-    save: (d, fn) => { const b = el('button', 'btn', 'Salvar'); b.onclick = async () => { try { await fn(); toast('Salvo!'); } catch (e) { toast('Erro: ' + e.message); } }; d.append(b); },
-    row: (d, txt, fn) => { const r = el('div', 'row'), t = el('span', null, txt), x = el('button', 'icon', '🗑'); t.style.flex = 1; x.onclick = fn; r.append(t, x); d.append(r); },
-    chans: sel => { const o0 = el('option', null, '— escolha o canal —'); o0.value = ''; sel.append(o0); Object.entries(curChans).filter(([, x]) => x.type !== 'voice').forEach(([id, x]) => { const o = el('option', null, '# ' + x.name); o.value = id; sel.append(o); }); }
-  };
-}
-function renderBP() {
-  const n = $('#bpn'), c = $('#bpc'), h = el('div', 'bphead'), lg = el('img'); n.replaceChildren(); c.replaceChildren();
-  lg.src = document.querySelector('.logo').src; lg.alt = ''; lg.style.cssText = 'width:38px;height:38px;border-radius:11px'; h.append(lg, el('b', null, 'ConcordBot')); n.append(h);
-  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP'], ['tk', '🎫 Tickets'], ['ob', '🎯 Onboarding'], ['nc', '📢 Novidades do Concord']].forEach(([k, l]) => {
-    const b = el('button', k === bpTab ? 'on' : '', l); b.onclick = () => { bpTab = k; renderBP(); }; n.append(b);
-  });
-  BP[bpTab](c, kit(c));
-}
-const BP = {
-  home(c, k) {
-    const st = el('div', 'stats');
-    [['👥', Object.keys(members).length, 'membros'], ['📺', Object.keys(curChans).length, 'canais'], ['🎭', Object.keys(roles).length, 'cargos'], ['⌨️', Object.keys(cfg.cmds || {}).length, 'comandos seus'], ['🛒', Object.keys(cfg.shop || {}).length, 'itens na loja']]
-      .forEach(([i, v, t]) => { const d = el('div', 'stat'); d.append(el('span', null, i), el('b', null, v), el('small', null, t)); st.append(d); });
-    c.append(el('h2', null, 'Visão geral'), el('small', null, $('#sname').textContent + ' · prefixo ' + (cfg.prefix || '!') + ' · digite ' + (cfg.prefix || '!') + 'ajuda no chat'), st);
-    const d = k.card('Módulos (ligue e desligue)'), off = cfg.off || {};
-    [['💰 Economia', cfg.eco !== false, v => R().update({ eco: v })], ['🎉 Comandos de diversão', !off.fun, v => R().child('off/fun').set(v ? null : true)],
-     ['🛠 Comandos de utilidades', !off.util, v => R().child('off/util').set(v ? null : true)], ['🔨 Comandos de moderação', !off.mod, v => R().child('off/mod').set(v ? null : true)],
-     ['👋 Mensagem de boas-vindas', (cfg.welcome || {}).on, v => R().child('welcome/on').set(v)], ['🚪 Mensagem de despedida', (cfg.bye || {}).on, v => R().child('bye/on').set(v)],
-     ['🛡 Auto-moderação', (cfg.am || {}).on, v => R().child('am/on').set(v)], ['📈 Níveis e XP', (cfg.xp || {}).on, v => R().child('xp/on').set(v)], ['🎫 Tickets', (cfg.tk || {}).on, v => R().child('tk/on').set(v)]]
-      .forEach(([t, v, fn]) => d.append(k.chk(t, v, fn)));
-  },
-  welcome(c, k) {
-    c.append(el('h2', null, 'Boas-vindas e despedida'));
-    [['welcome', '👋 Boas-vindas', 'Bem-vindo(a) {mention} a {server}! Agora somos {count} membros. 🎉'], ['bye', '🚪 Despedida', '{user} saiu de {server}. Até mais!']].forEach(([key, t, ph]) => {
-      const w = cfg[key] || {}, d = k.card(t), l = k.chk('Ativada', w.on), sel = el('select'), tx = el('textarea'); k.chans(sel); sel.value = w.channel || ''; tx.placeholder = ph; tx.value = w.text || '';
-      d.append(l, sel, tx, el('small', null, 'Variáveis: {user} {mention} {server} {count}')); k.save(d, () => R().child(key).set({ on: l.input.checked, channel: sel.value, text: tx.value.slice(0, 500) }));
-    });
-  },
-  cmds(c, k) {
-    c.append(el('h2', null, 'Comandos'));
-    let d = k.card('Prefixo'); const px = k.inp('Prefixo dos comandos (padrão !)', cfg.prefix); px.maxLength = 2; d.append(px); k.save(d, () => R().update({ prefix: px.value.trim() || null }));
-    d = k.card('Comandos do bot'); const p = cfg.prefix || '!';
-    [['🎉 Diversão', 'dado moeda 8ball piada fato escolher abraco ship calc enquete'], ['🛠 Utilidades', 'ping hora servidor perfil ajuda'], ['🔨 Moderação', 'kick ban unban mute unmute avisar limpar'], ['💰 Economia', 'saldo daily trabalhar apostar transferir top loja comprar inventario dar'], ['📈 Níveis', 'nivel rank']]
-      .forEach(([t, l]) => d.append(el('small', null, t + ': ' + l.split(' ').map(x => p + x).join(' '))));
-    d = k.card('Criar comando personalizado'); const cn = k.inp('nome do comando, sem o prefixo (ex.: regras)'), cr = el('textarea'), la = k.chk('Só administradores'), add = el('button', 'btn', 'Criar comando');
-    cr.placeholder = 'Resposta. Variáveis: {user} {server} {count} {channel} {random}'; const ct = k.inp('Título do embed (opcional)'); d.append(cn, ct, cr, la, add);
-    add.onclick = () => {
-      const nm = cn.value.trim().toLowerCase().replace(/[^a-z0-9áàâãéêíóôõúç_-]/g, ''); if (!nm || !cr.value.trim()) return toast('Preencha o nome e a resposta.');
-      if (CB['!' + nm]) return toast('Esse nome já é um comando do bot.'); R().child('cmds').push({ name: nm, title: ct.value.trim().slice(0, 100), reply: cr.value.slice(0, 1000), admin: la.input.checked });
-    };
-    d = k.card('Seus comandos'); const e = Object.entries(cfg.cmds || {}); if (!e.length) d.append(el('small', null, 'Nenhum ainda.'));
-    e.forEach(([id, x]) => k.row(d, p + x.name + (x.admin ? ' 🔒' : '') + ' → ' + x.reply.slice(0, 60), () => R().child('cmds/' + id).remove()));
-  },
-  eco(c, k) {
-    c.append(el('h2', null, 'Economia e loja'));
-    let d = k.card('Configuração'); const cu = k.inp('Símbolo da moeda (ex.: 🪙)', cfg.currency), dl = k.inp('Valor do !daily (padrão 200)', cfg.daily, 'number'), w1 = k.inp('Mínimo do !trabalhar (padrão 50)', cfg.workMin, 'number'), w2 = k.inp('Máximo do !trabalhar (padrão 150)', cfg.workMax, 'number');
-    d.append(cu, dl, w1, w2); k.save(d, () => R().update({ currency: cu.value.trim().slice(0, 8) || null, daily: +dl.value || null, workMin: +w1.value || null, workMax: +w2.value || null }));
-    d = k.card('🛒 Loja'); const sn = k.inp('Nome do item'), sp = k.inp('Preço', '', 'number'), sa = el('button', 'btn', 'Adicionar item'); d.append(sn, sp, sa);
-    sa.onclick = () => { if (!sn.value.trim() || !(+sp.value > 0)) return toast('Informe o nome e um preço maior que 0.'); R().child('shop').push({ name: sn.value.trim().slice(0, 30), price: Math.floor(+sp.value) }); };
-    Object.entries(cfg.shop || {}).forEach(([id, x]) => k.row(d, x.name + ' — ' + money(x.price), () => R().child('shop/' + id).remove()));
-  },
-  mod(c, k) {
-    const a = cfg.am || {}; c.append(el('h2', null, 'Auto-moderação'), el('small', null, 'Bloqueia mensagens que quebram as regras antes de serem enviadas. Dono e administradores não são afetados.'));
-    const d = k.card('Regras'), on_ = k.chk('Auto-moderação ativada', a.on), lk = k.chk('Bloquear links', a.links), cp = k.chk('Bloquear MAIÚSCULAS em excesso', a.caps), sp = k.chk('Bloquear spam (mais de 5 mensagens em 8 s)', a.spam);
-    const wd = el('textarea'), lg = el('select'); wd.placeholder = 'Palavras proibidas, separadas por vírgula'; wd.value = a.words || ''; k.chans(lg); lg.value = a.log || '';
-    d.append(on_, lk, cp, sp, wd, el('small', null, 'Canal para registrar o que foi bloqueado (opcional):'), lg);
-    k.save(d, () => R().child('am').set({ on: on_.input.checked, links: lk.input.checked, caps: cp.input.checked, spam: sp.input.checked, words: wd.value.slice(0, 500), log: lg.value }));
-  },
-  xp(c, k) {
-    const x = cfg.xp || {}; c.append(el('h2', null, 'Níveis e XP'), el('small', null, 'Cada pessoa ganha de 15 a 25 XP por mensagem (no máximo uma vez por minuto). Comandos: !nivel e !rank.'));
-    const d = k.card('Configuração'), on_ = k.chk('Sistema de níveis ativado', x.on), an = k.chk('Avisar no chat quando alguém subir de nível', x.announce !== false);
-    d.append(on_, an); k.save(d, () => R().child('xp').set({ on: on_.input.checked, announce: an.input.checked }));
-  }
-};
+/* O painel do ConcordBot é um site separado (concordbot.html). Ajuste a URL se hospedar em outro lugar. */
+const BOT_PANEL_URL = 'concordbot.html';
+const openBotSite = () => window.open(BOT_PANEL_URL + (curServer && curServer !== 'dm' ? '?server=' + curServer : ''), '_blank');
+$('#bpbtn').onclick = () => openBotSite();
+const botJoined = () => !!cfg && cfg.joined !== false && (!!cfg.joined || Object.keys(cfg).length > 0);
 
 /* ---------- DM de boas-vindas do ConcordBot ---------- */
 const OFFICIAL = 'https://reidodesenho382-collab.github.io/Concord/?invite=-P4GYMqcIDLEy5yvHyAA';
@@ -1617,7 +1540,7 @@ CB['!ajuda'] = () => _h3() + '\n🧠 IA (Groq): ' + (cfg.prefix || '!') + 'setke
 /* ---------- acesso ao painel e versão ---------- */
 const BUILD = '2026.11.04-suporte';
 Object.assign(CB, {
-  '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBP(); return null; },
+  '!painel': () => { if (!curServer || curServer === 'dm') return '⛔ Use este comando dentro de um servidor.'; if (!isOwner()) return '⛔ Só o dono do servidor acessa o painel do ConcordBot.'; openBotSite(); return null; },
   '!versao': () => '📦 Concord versão ' + BUILD
 });
 
@@ -1672,15 +1595,6 @@ Object.assign(CB, {
 });
 const _h4 = CB['!ajuda'];
 CB['!ajuda'] = () => _h4() + (cfg.tk && cfg.tk.on ? '\n🎫 Tickets: ' + ['ticket motivo', 'fechar', 'reabrir', 'adicionar @p', 'remover @p', 'apagar'].map(x => (cfg.prefix || '!') + x).join(' · ') + ' (os 4 últimos só a equipe)' : '');
-BP.tk = (c, k) => {
-  const t = cfg.tk || {}, d = k.card('Configuração'), on_ = k.chk('Sistema de tickets ativado', t.on), mx = k.inp('Máximo de tickets abertos por pessoa (padrão 1)', t.max, 'number'), rs = el('select'), lg = el('select'), tx = el('textarea'), o0 = el('option', null, '— só administradores e moderadores —');
-  c.insertBefore(el('small', null, 'Membros abrem um canal privado com !ticket motivo. Só quem abriu, a equipe e quem for adicionado enxerga o canal.'), d); c.insertBefore(el('h2', null, '🎫 Tickets'), c.firstChild);
-  o0.value = ''; rs.append(o0); Object.entries(roles).forEach(([id, r]) => { const o = el('option', null, '🎭 ' + r.name); o.value = id; rs.append(o); }); rs.value = t.role || '';
-  k.chans(lg); lg.value = t.log || ''; tx.placeholder = '🎫 Ticket #{num} aberto por {mention}.\nMotivo: {reason}\nA equipe vai te atender em breve. Para encerrar, use !fechar.'; tx.value = t.msg || '';
-  d.append(on_, mx, el('small', null, 'Cargo da equipe de suporte (vê todos os tickets):'), rs, el('small', null, 'Canal que recebe a transcrição dos tickets fechados (opcional):'), lg, tx, el('small', null, 'Variáveis da mensagem inicial: {user} {mention} {num} {reason} {server}'));
-  k.save(d, () => R().child('tk').set({ on: on_.input.checked, max: +mx.value || null, role: rs.value, log: lg.value, msg: tx.value.slice(0, 500) }));
-};
-
 /* ---------- emojis e figurinhas personalizados ---------- */
 function emojiInto(box, text) {
   text.split(/(:[a-z0-9_]{2,32}:)/i).forEach((p, i) => {
@@ -1948,7 +1862,7 @@ function photoData(f, maxW, cb) {
 }
 function showNews() {
   clear(msgSubs); curServer = 'dm'; curChannel = 'news'; lastMsg = null; rows = {}; $('#typing').textContent = '';
-  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#bpbtn').hidden = true; $('#obbtn').hidden = true;
+  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#obbtn').hidden = true;
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Só a equipe do Concord publica aqui'; closeDrawers(); markRead('dm/news');
   const wrap = el('div', 'newsw'), feed = el('div'); wrap.append(feed); $('#msgs').replaceChildren(wrap);
   on(msgSubs, db.ref('news').limitToLast(20), 'value', s => {
@@ -2282,30 +2196,6 @@ function openServerOB(preview) {
   };
   draw(); if (!d.open) d.showModal();
 }
-BP.ob = (c, k) => {
-  const ob = cfg.ob || {}, safe = Object.entries(roles).filter(([id]) => obSafe(id)), id8 = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-  const write = fn => {
-    const qs = JSON.parse(JSON.stringify(ob.qs || {})), rl = {}; fn(qs);
-    Object.values(qs).forEach(q => Object.values(q.opts || {}).forEach(o => Object.keys(o.roles || {}).forEach(r => rl[r] = true)));
-    return R().update({ 'ob/qs': Object.keys(qs).length ? qs : null, 'ob/roles': Object.keys(rl).length ? rl : null }).catch(e => toast('Erro: ' + e.message));
-  };
-  c.append(el('h2', null, '🎯 Onboarding'), el('small', null, 'Perguntas que novos membros respondem ao entrar para escolher cargos (e, com isso, quais canais enxergam). Só cargos sem permissões podem ser oferecidos.'));
-  let d = k.card('Configuração'); const on_ = k.chk('Onboarding ativado', ob.on), ti = k.inp('Título (opcional)', ob.title), de = el('textarea'), pv = el('button', 'btn ghost', '👀 Ver como o membro vê');
-  de.placeholder = 'Mensagem de boas-vindas (opcional)'; de.value = ob.desc || ''; ti.maxLength = 80; de.maxLength = 300; pv.onclick = () => openServerOB(true);
-  d.append(on_, ti, de); k.save(d, () => R().child('ob').update({ on: on_.input.checked, title: ti.value.trim() || null, desc: de.value.trim() || null })); d.append(pv);
-  Object.entries(ob.qs || {}).forEach(([qid, q]) => {
-    const d2 = k.card('❓ ' + q.q); d2.append(el('small', null, (q.multi ? 'múltipla escolha' : 'escolha única') + ' · ' + (q.req ? 'obrigatória' : 'opcional')));
-    Object.entries(q.opts || {}).forEach(([oid, o]) => k.row(d2, (o.emoji ? o.emoji + ' ' : '') + o.label + ' → ' + (Object.keys(o.roles || {}).map(r => (roles[r] || {}).name || '(cargo apagado)').join(', ') || 'sem cargo'), () => write(qs => delete qs[qid].opts[oid])));
-    const lb = k.inp('Nova opção (ex.: Jogador de Minecraft)'), em = k.inp('Emoji (opcional)'), pk = el('div'), sel = new Set(), add = el('button', 'btn ghost', '＋ Adicionar opção'), del = el('button', 'btn ghost', '🗑 Apagar pergunta'); lb.maxLength = 50; em.maxLength = 4;
-    safe.forEach(([rid, r]) => pk.append(k.chk('🎭 ' + r.name, false, v => v ? sel.add(rid) : sel.delete(rid)))); if (!safe.length) pk.append(el('small', null, 'Crie cargos sem permissões na aba Cargos do servidor para oferecê-los aqui.'));
-    add.onclick = () => { if (!lb.value.trim()) return toast('Escreva o texto da opção.'); write(qs => { (qs[qid].opts = qs[qid].opts || {})[id8()] = { label: lb.value.trim(), emoji: em.value.trim() || null, roles: sel.size ? Object.fromEntries([...sel].map(r => [r, true])) : null }; }); };
-    del.onclick = () => confirm('Apagar esta pergunta?') && write(qs => delete qs[qid]); d2.append(lb, em, el('small', null, 'Cargos que esta opção dá:'), pk, add, del);
-  });
-  d = k.card('Nova pergunta'); const nq = k.inp('Pergunta (ex.: Quais jogos você joga?)'), mu = k.chk('Permitir várias respostas', true), rq = k.chk('Resposta obrigatória', false), mk = el('button', 'btn', 'Criar pergunta'); nq.maxLength = 120;
-  mk.onclick = () => { if (!nq.value.trim()) return toast('Escreva a pergunta.'); write(qs => { qs[id8()] = { q: nq.value.trim(), multi: mu.input.checked, req: rq.input.checked }; }); };
-  d.append(nq, mu, rq, mk);
-};
-
 /* ---------- NOVIDADES DO CONCORD NOS SERVIDORES (opcional) ---------- */
 let newsCache = {}; const newsDone = {};
 async function syncNews() {
@@ -2328,16 +2218,6 @@ async function syncNews() {
     }
   }
 }
-BP.nc = (c, k) => {
-  const nc = cfg.nc || {};
-  c.append(el('h2', null, '📢 Novidades do Concord'), el('small', null, 'Opcional. Quando a equipe do Concord publicar uma novidade no perfil oficial, ela aparece automaticamente no canal escolhido deste servidor. Só novidades publicadas depois de ativar.'));
-  const d = k.card('Configuração'), on_ = k.chk('Enviar novidades do Concord para um canal', nc.on), sel = el('select'), mk = el('button', 'btn ghost', '＋ Criar canal #novidades-do-concord');
-  k.chans(sel); sel.value = nc.channel || '';
-  mk.onclick = async () => { try { const r = db.ref('channels/' + curServer).push(); await r.set({ name: 'novidades-do-concord' }); await R().child('nc').set({ on: true, channel: r.key, since: nowS() }); toast('Canal criado e novidades ativadas! 📢'); } catch (e) { toast('Erro: ' + e.message); } };
-  d.append(on_, el('small', null, 'Escolha um canal de texto existente ou crie um novo:'), sel, mk);
-  k.save(d, async () => { if (on_.input.checked && !sel.value) throw new Error('Escolha um canal.'); await R().child('nc').set({ on: on_.input.checked, channel: sel.value || null, since: nc.on && nc.channel === sel.value ? (nc.since || nowS()) : nowS() }); syncNews(); });
-};
-
 /* ---------- NOMES DE USUÁRIO ÚNICOS ---------- */
 let claimWarned = false;
 const nameKey = n => n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
