@@ -310,6 +310,11 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .dcard .h{display:flex;gap:12px;align-items:center;min-width:0}.dcard .h b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dcard .h small{color:var(--mute);font-size:12px}
 .dic{width:48px;height:48px;border-radius:16px;background:var(--hover);display:grid;place-items:center;font-weight:700;font-size:19px;overflow:hidden;flex:none}.dic img{width:100%;height:100%;object-fit:cover}
 .dcard p{color:var(--mute);font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+
+#sbanner{height:96px;flex:none;background-size:cover;background-position:center;border-bottom:1px solid var(--line)}
+.bprev{display:block;width:100%;height:84px;border-radius:8px;background:var(--hover) center/cover no-repeat;border:1px dashed var(--line)}
+.dban{height:70px;margin:-14px -14px 0;border-radius:12px 12px 0 0;background:var(--hover) center/cover no-repeat}
+.pban{background-size:cover!important;background-position:center!important}
 </style>
 </head>
 <body>
@@ -333,6 +338,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
   <div id="scrim"></div>
   <nav class="rail" id="rail"></nav>
   <aside class="side">
+    <div id="sbanner" hidden></div>
     <div class="head"><span id="sname">Concord</span><div><button class="icon" id="obbtn" title="Onboarding: escolher cargos" hidden>🎯</button><button class="icon" id="bpbtn" title="Painel do ConcordBot (site separado)">🤖</button><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
     <div id="chans"></div>
     <div class="me"><div id="meav"></div><b id="mename"></b><button class="icon" id="settings" title="Configurações">⚙</button><button class="icon" id="logout" title="Sair">⏻</button></div>
@@ -383,6 +389,8 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
     <input id="s-name" placeholder="Nome de usuário" maxlength="32">
     <div class="row"><span id="s-prev"></span><label class="btn ghost" style="cursor:pointer">📷 Escolher foto<input id="s-file" type="file" accept="image/*" hidden></label><button class="btn ghost" id="s-rm" type="button">Remover</button></div>
     <input id="s-photo" placeholder="…ou cole o link de uma imagem (https://…)">
+    <small>Banner do perfil (aparece no topo do seu perfil):</small><span class="bprev" id="s-bprev"></span>
+    <div class="row"><label class="btn ghost" style="cursor:pointer">🖼 Escolher banner<input id="s-bfile" type="file" accept="image/*" hidden></label><button class="btn ghost" id="s-brm" type="button">Remover banner</button></div>
     <input id="s-bio" placeholder="Sobre mim (descrição)" maxlength="190">
     <small>Tag de servidor (aparece ao lado do seu nome):</small><select id="s-tag"><option value="">Nenhuma</option></select>
     <h3>🔔 Notificações</h3>
@@ -502,17 +510,17 @@ function paintMe() {
   $('#meav').replaceChildren(avatar(me));
 }
 async function saveMe() {
-  uc[me.uid] = { name: me.name, photo: me.photo, c1: me.c1, c2: me.c2, bio: me.bio, since: me.since, tagSid: me.tagSid };
-  db.ref('users/' + me.uid).update({ name: me.name, lname: me.name.toLowerCase(), photo: me.photo, status: me.status, c1: me.c1, c2: me.c2, bio: me.bio, since: me.since, tagSid: me.tagSid || null });
+  uc[me.uid] = { name: me.name, photo: me.photo, c1: me.c1, c2: me.c2, bio: me.bio, since: me.since, tagSid: me.tagSid, banner: me.banner || '' };
+  db.ref('users/' + me.uid).update({ name: me.name, lname: me.name.toLowerCase(), photo: me.photo, status: me.status, c1: me.c1, c2: me.c2, bio: me.bio, since: me.since, tagSid: me.tagSid || null, banner: me.banner || null });
   db.ref('presence/' + me.uid).set(me.status);
   const sv = (await db.ref('users/' + me.uid + '/servers').get()).val() || {};
   Object.keys(sv).forEach(id => db.ref(`members/${id}/${me.uid}`).update({ name: me.name, photo: pubPhoto(), c1: me.c1, c2: me.c2 }));
 }
 async function start(u) {
   if (me && me.uid === u.uid) return;
-  me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', bio: '', since: 0, tagSid: '' };
+  me = { uid: u.uid, name: u.displayName || u.email.split('@')[0], photo: u.photoURL || '', status: 'online', c1: '', c2: '', banner: '', bio: '', since: 0, tagSid: '' };
   $('#auth').hidden = true; $('#app').hidden = false; errBox('');
-  try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0, tagSid: p.tagSid || '' }); } catch (e) {}
+  try { const p = (await db.ref('users/' + me.uid).get()).val(); if (p) Object.assign(me, { name: p.name || me.name, photo: p.photo ?? me.photo, status: p.status || 'online', c1: p.c1 || '', banner: p.banner || '', c2: p.c2 || '', bio: p.bio || '', since: p.since || 0, tagSid: p.tagSid || '' }); } catch (e) {}
   await ensureUsername(); me.since = me.since || Date.now(); paintMe(); saveMe(); botDM(); initNotify(); initNews(); initMod();
   on(serverSubs, db.ref('.info/connected'), 'value', c => {
     if (!c.val()) return;
@@ -546,8 +554,8 @@ function renderRail(list) {
   Object.keys(list).forEach(id => { if (checked.has(id)) return; checked.add(id);
     on(serverSubs, db.ref('servers/' + id), 'value', x => {
       if (!x.exists()) { db.ref(`users/${me.uid}/servers/${id}`).remove(); delete srvInfo[id]; return; }
-      const v = x.val(); srvInfo[id] = { name: v.name, icon: v.icon || '', tag: v.tag || null };
-      if (id === curServer) $('#sname').textContent = v.name; renderRail(lastRailList);
+      const v = x.val(); srvInfo[id] = { name: v.name, icon: v.icon || '', tag: v.tag || null, banner: v.banner || '' };
+      if (id === curServer) { $('#sname').textContent = v.name; paintSBanner(); } renderRail(lastRailList);
     });
     checkAccess(id); });
   if (!curServer && !curHome) showHome();
@@ -587,7 +595,7 @@ $('#invite').onclick = () => {
 function selectServer(id, name) {
   clear(chanSubs); curServer = id; curChannel = null; curHome = false; $('#invite').hidden = false;
   document.querySelectorAll('.srv').forEach(b => b.classList.toggle('on', b.title === name));
-  $('#sname').textContent = name; $('#addch').hidden = false;
+  $('#sname').textContent = name; $('#addch').hidden = false; paintSBanner();
   roles = {}; mroles = {}; oroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {}; cfg = {}; curCats = {}; $('#obbtn').hidden = true;
   db.ref('servers/' + id + '/owner').get().then(s => { serverOwner = s.val(); calcPerms(); obCheck(); });
   const subs = chanSubs;
@@ -783,6 +791,7 @@ function renderMembers() {
 
 /* ---------- configurações e Nitro ---------- */
 $('#settings').onclick = () => {
+  pendingBanner = null; setBg($('#s-bprev'), me.banner);
   pendingPhoto = null; $('#s-name').value = me.name; $('#s-photo').value = me.photo.startsWith('data:') ? '' : me.photo; setPrev(me.photo); $('#s-bio').value = me.bio; $('#s-status').value = me.status;
   $('#s-use').checked = !!me.c1; $('#s-c1').value = me.c1 || '#73cb27'; $('#s-c2').value = me.c2 || '#2fa8ff'; $('#st').showModal(); fillTagSelect(); syncNP(); $('#s-uid').value = me.uid;
 };
@@ -791,8 +800,11 @@ $('#s-save').onclick = async () => {
   if (nn && nn !== me.name) { const r = await claimName(nn); if (!r.ok) return toast(r.msg); me.name = nn; }
   const lk = $('#s-photo').value.trim(); if (pendingPhoto !== null) me.photo = pendingPhoto; else if (lk !== (me.photo.startsWith('data:') ? '' : me.photo)) me.photo = lk; me.bio = $('#s-bio').value.trim(); me.status = $('#s-status').value;
   const use = $('#s-use').checked; me.c1 = use ? $('#s-c1').value : ''; me.c2 = use ? $('#s-c2').value : '';
-  me.tagSid = $('#s-tag').value; paintMe(); saveMe(); $('#st').close();
+  if (pendingBanner !== null) me.banner = pendingBanner; me.tagSid = $('#s-tag').value; paintMe(); saveMe(); $('#st').close();
 };
+
+$('#s-bfile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; resizeBanner(f, 600, 200, d => { pendingBanner = d; setBg($('#s-bprev'), d); }); };
+$('#s-brm').onclick = () => { pendingBanner = ''; setBg($('#s-bprev'), ''); };
 
 /* ---------- emojis ---------- */
 const EMOJIS = '😀😁😂🤣😊😍😘😎🤔😢😭😡👍👎👏🙏💪🔥✨🎉❤️💚💔👀🤝🙌😴🤯🥳😅🙃😉😇🤩😱🍕☕🎮'.match(/\p{Extended_Pictographic}\uFE0F?/gu);
@@ -830,7 +842,7 @@ function showHome() {
   if (innerWidth <= 700) document.body.classList.add('nav-open');
   clear(chanSubs); clear(msgSubs); curHome = true; curServer = null; curChannel = null; members = {}; renderMembers();
   document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('home')));
-  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#obbtn').hidden = true; $('#bpbtn').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
+  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#obbtn').hidden = true; $('#bpbtn').hidden = true; $('#sbanner').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
   $('#msgs').replaceChildren(el('div', 'empty', 'Adicione amigos pelo nome de usuário, converse por mensagem direta e ligue para eles.'));
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Enviar mensagem';
   const c = $('#chans'); c.replaceChildren();
@@ -1000,7 +1012,7 @@ async function showProfile(id) {
   const u = (await db.ref('users/' + id).get()).val() || { name: 'Usuário' }; uc[id] = u;
   const self = id === me.uid, st = self ? null : (await db.ref(`friends/${me.uid}/${id}`).get()).val();
   const p = presence[id], d = $('#pf'), box = $('#pf-body'); box.replaceChildren();
-  const ban = el('div', 'pban'); ban.style.background = u.c1 ? `linear-gradient(90deg,${u.c1},${u.c2 || u.c1})` : 'var(--green)';
+  const ban = el('div', 'pban'); ban.style.background = u.c1 ? `linear-gradient(90deg,${u.c1},${u.c2 || u.c1})` : 'var(--green)'; if (safeImg(u.banner)) ban.style.backgroundImage = `url("${u.banner}")`;
   const av = avatar(u); av.classList.add('big');
   const nm = el('h3', null, u.name), info = el('div', 'pinfo'); paintName(nm, u.c1, u.c2);
   const h = el('div'), tgp = el('span'); attachTag(tgp, id); h.append(nm, el('span', 'nitro', '✦'), tgp);
@@ -1335,6 +1347,23 @@ $('#s-photo').addEventListener('input', e => { pendingPhoto = null; const v = e.
 
 /* ---------- nome e ícone do servidor ---------- */
 let srvInfo = {}, lastRailList = {}, pendingIcon = null;
+const safeImg = u => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(u || '') ? u : '';
+function resizeBanner(f, w, h, cb) {
+  if (!f) return; if (!f.type.startsWith('image/')) return toast('Escolha um arquivo de imagem.');
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const k = Math.max(w / img.width, h / img.height), sw = w / k, sh = h / k;
+    c.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, w, h); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg', .78));
+  };
+  img.onerror = () => toast('Nao consegui abrir essa imagem.'); img.src = url;
+}
+const setBg = (el_, u) => { el_.style.backgroundImage = safeImg(u) ? `url("${u}")` : 'none'; };
+let pendingBanner = null, pendingSB = null;
+function paintSBanner() {
+  const b = $('#sbanner'), v = curServer && curServer !== 'dm' ? srvInfo[curServer] : null;
+  if (v && safeImg(v.banner)) { setBg(b, v.banner); b.hidden = false; } else b.hidden = true;
+}
 function resizeImg(f, z, cb) {
   if (!f) return; if (!f.type.startsWith('image/')) return toast('Escolha um arquivo de imagem.');
   const img = new Image(), url = URL.createObjectURL(f);
@@ -1346,7 +1375,7 @@ function resizeImg(f, z, cb) {
 }
 function svIdentity(c) {
   const f = el('div', 'card2'), nm = el('input'), prev = el('span'), row = el('div', 'row'), lb = el('label', 'btn ghost', '📷 Escolher ícone'), fi = el('input'), rm = el('button', 'btn ghost', 'Remover'), ok = el('button', 'btn', 'Salvar alterações');
-  pendingIcon = null; nm.value = $('#sname').textContent; nm.maxLength = 40; nm.placeholder = 'Nome do servidor';
+  pendingIcon = null; pendingSB = null; nm.value = $('#sname').textContent; nm.maxLength = 40; nm.placeholder = 'Nome do servidor';
   const show = p => {
     const a = p ? el('img', 'av') : el('div', 'av', (nm.value || '?')[0].toUpperCase());
     if (p) a.src = p; else { a.style.background = 'var(--green)'; a.style.color = 'var(--ink)'; }
@@ -1358,10 +1387,15 @@ function svIdentity(c) {
   rm.onclick = () => { pendingIcon = ''; show(''); };
   ok.onclick = async () => {
     const name = nm.value.trim(); if (!name) return toast('O servidor precisa de um nome.');
-    const upd = { name }; if (pendingIcon !== null) upd.icon = pendingIcon || null;
-    try { await db.ref('servers/' + curServer).update(upd); pendingIcon = null; toast('Servidor atualizado!'); } catch (e) { toast('Erro: ' + e.message); }
+    const upd = { name }; if (pendingIcon !== null) upd.icon = pendingIcon || null; if (pendingSB !== null) upd.banner = pendingSB || null;
+    try { await db.ref('servers/' + curServer).update(upd); pendingIcon = null; pendingSB = null; toast('Servidor atualizado!'); } catch (e) { toast('Erro: ' + e.message); }
   };
-  row.append(prev, lb, rm); f.append(el('h3', null, 'Nome e ícone do servidor'), row, nm, ok); c.append(f);
+  row.append(prev, lb, rm);
+  const bp = el('span', 'bprev'), brow = el('div', 'row'), bl = el('label', 'btn ghost', '🖼 Escolher banner'), bf = el('input'), br = el('button', 'btn ghost', 'Remover banner');
+  setBg(bp, (srvInfo[curServer] || {}).banner); bf.type = 'file'; bf.accept = 'image/*'; bf.hidden = true; bl.append(bf); bl.style.cursor = 'pointer'; br.type = 'button';
+  bf.onchange = () => { const file = bf.files[0]; bf.value = ''; resizeBanner(file, 480, 160, d => { pendingSB = d; setBg(bp, d); }); };
+  br.onclick = () => { pendingSB = ''; setBg(bp, ''); }; brow.append(bl, br);
+  f.append(el('h3', null, 'Nome e ícone do servidor'), row, nm, el('small', null, 'Banner do servidor (aparece no topo da lista de canais):'), bp, brow, ok); c.append(f);
 }
 
 /* ---------- ConcordBot: economia, boas-vindas e painel ---------- */
@@ -1885,16 +1919,16 @@ function showDiscover() {
     const t = q.value.trim().toLowerCase(), L = all.filter(x => (!cat || x.cat === cat) && (!t || (x.name + ' ' + (x.desc || '')).toLowerCase().includes(t))); grid.replaceChildren();
     if (!L.length) grid.append(el('div', 'empty', all.length ? 'Nenhum servidor encontrado.' : 'Ainda não há servidores em destaque. Volte em breve!'));
     L.forEach(x => {
-      const c = el('div', 'dcard'), h = el('div', 'h'), ic = el('div', 'dic'), t2 = el('div'), joined = !!(lastRailList || {})[x.id];
+      const c = el('div', 'dcard'), h = el('div', 'h'), bn = safeImg(x.banner) ? el('div', 'dban') : null, ic = el('div', 'dic'), t2 = el('div'), joined = !!(lastRailList || {})[x.id];
       if (x.icon) { const im = el('img'); im.src = x.icon; im.alt = ''; ic.append(im); } else ic.textContent = (x.name || '?')[0].toUpperCase();
       t2.style.minWidth = 0; t2.append(el('b', null, x.name), el('small', null, (x.pin ? '⭐ Destaque · ' : '') + (x.cat || ''))); h.append(ic, t2);
       const b = el('button', 'btn' + (joined ? ' ghost' : ''), joined ? 'Abrir' : 'Entrar'); b.onclick = () => joined ? selectServer(x.id, x.name) : joinServer(x.id);
-      c.append(h, el('p', null, x.desc || ''), b); grid.append(c);
+      if (bn) { setBg(bn, x.banner); c.append(bn); } c.append(h, el('p', null, x.desc || ''), b); grid.append(c);
     });
   };
   q.oninput = draw; draw();
   on(msgSubs, db.ref('discover'), 'value', async s => {
-    const L = (await Promise.all(Object.entries(s.val() || {}).map(async ([id, d]) => { try { const v = (await db.ref('servers/' + id).get()).val(); return v ? { id, ...d, name: v.name, icon: v.icon || '' } : null; } catch (e) { return null; } }))).filter(Boolean)
+    const L = (await Promise.all(Object.entries(s.val() || {}).map(async ([id, d]) => { try { const v = (await db.ref('servers/' + id).get()).val(); return v ? { id, ...d, name: v.name, icon: v.icon || '', banner: v.banner || '' } : null; } catch (e) { return null; } }))).filter(Boolean)
       .sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || (b.ts || 0) - (a.ts || 0));
     if (curChannel !== 'discover') return; all = L; draw();
   });
