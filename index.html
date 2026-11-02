@@ -516,7 +516,7 @@ async function start(u) {
 
 /* ---------- servidores ---------- */
 function renderRail(list) {
-  lastRailList = list; loadBooks(); watchServers();
+  lastRailList = list; loadBooks(); watchServers(); syncNews();
   const rail = $('#rail'); rail.replaceChildren();
   const home = el('button', 'srv home' + (curHome ? ' on' : '')); home.onclick = showHome; home.title = 'Concord'; const hi = el('img'); hi.src = document.querySelector('.logo').src; hi.alt = 'Concord'; home.append(hi); srvBadge(home, 'dm'); rail.append(home, el('div', 'sep'));
   Object.entries(list).forEach(([id, v]) => {
@@ -1471,7 +1471,7 @@ function kit(c) {
 function renderBP() {
   const n = $('#bpn'), c = $('#bpc'), h = el('div', 'bphead'), lg = el('img'); n.replaceChildren(); c.replaceChildren();
   lg.src = document.querySelector('.logo').src; lg.alt = ''; lg.style.cssText = 'width:38px;height:38px;border-radius:11px'; h.append(lg, el('b', null, 'ConcordBot')); n.append(h);
-  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP'], ['tk', '🎫 Tickets'], ['ob', '🎯 Onboarding']].forEach(([k, l]) => {
+  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP'], ['tk', '🎫 Tickets'], ['ob', '🎯 Onboarding'], ['nc', '📢 Novidades do Concord']].forEach(([k, l]) => {
     const b = el('button', k === bpTab ? 'on' : '', l); b.onclick = () => { bpTab = k; renderBP(); }; n.append(b);
   });
   BP[bpTab](c, kit(c));
@@ -1929,6 +1929,7 @@ function initNews() {
   att['dm/news'] = Date.now(); if (!('dm/news' in readT)) readT['dm/news'] = nowS();
   const q = db.ref('news').limitToLast(1), fn = snap => { const p = snap.val() || {}; onNew('dm/news', { uid: p.by || 'official', name: 'Concord Oficial', text: p.title || 'Nova novidade', ts: p.ts }); };
   q.on('child_added', fn); serverSubs.push(() => q.off('child_added', fn));
+  const nq = db.ref('news').limitToLast(5), nf = s => { newsCache = s.val() || {}; syncNews(); }; nq.on('value', nf); serverSubs.push(() => nq.off('value', nf));
 }
 function officialRow() {
   const r = el('div', 'u'), w = el('span', 'wrap'), nm = el('span', null, 'Concord Oficial'), tg = el('span', 'offtag', '✔ OFICIAL');
@@ -2296,6 +2297,38 @@ BP.ob = (c, k) => {
   d = k.card('Nova pergunta'); const nq = k.inp('Pergunta (ex.: Quais jogos você joga?)'), mu = k.chk('Permitir várias respostas', true), rq = k.chk('Resposta obrigatória', false), mk = el('button', 'btn', 'Criar pergunta'); nq.maxLength = 120;
   mk.onclick = () => { if (!nq.value.trim()) return toast('Escreva a pergunta.'); write(qs => { qs[id8()] = { q: nq.value.trim(), multi: mu.input.checked, req: rq.input.checked }; }); };
   d.append(nq, mu, rq, mk);
+};
+
+/* ---------- NOVIDADES DO CONCORD NOS SERVIDORES (opcional) ---------- */
+let newsCache = {}; const newsDone = {};
+async function syncNews() {
+  if (!me) return;
+  const items = Object.entries(newsCache).filter(([, p]) => p && p.title && p.ts);
+  if (!items.length) return;
+  for (const sid of Object.keys(lastRailList || {})) {
+    let nc; try { nc = (await db.ref(`botcfg/${sid}/nc`).get()).val(); } catch (e) { continue; }
+    if (!nc || !nc.on || !nc.channel) continue;
+    for (const [nid, p] of items) {
+      const k = sid + '/' + nid; if (newsDone[k] || p.ts < (nc.since || 0)) continue; newsDone[k] = 1;
+      try {
+        if (!(await db.ref(`channels/${sid}/${nc.channel}`).get()).exists()) { newsDone[k] = 0; break; }
+        const ref = db.ref(`messages/${sid}/${nc.channel}/${nid}`);
+        if ((await ref.get()).exists()) continue;
+        const e = { color: '#73cb27', title: String(p.title).slice(0, 100), desc: String(p.text || '').slice(0, 2000), footer: '📢 Novidades do Concord · ' + fmtDate(p.ts) };
+        if (okUrl(p.img) && String(p.img).length < 300000) e.img = p.img;
+        await ref.set({ uid: me.uid, bot: 'concord', name: 'Concord Oficial', photo: '', text: '', embed: e, ts: p.ts });
+      } catch (err) { newsDone[k] = 0; }
+    }
+  }
+}
+BP.nc = (c, k) => {
+  const nc = cfg.nc || {};
+  c.append(el('h2', null, '📢 Novidades do Concord'), el('small', null, 'Opcional. Quando a equipe do Concord publicar uma novidade no perfil oficial, ela aparece automaticamente no canal escolhido deste servidor. Só novidades publicadas depois de ativar.'));
+  const d = k.card('Configuração'), on_ = k.chk('Enviar novidades do Concord para um canal', nc.on), sel = el('select'), mk = el('button', 'btn ghost', '＋ Criar canal #novidades-do-concord');
+  k.chans(sel); sel.value = nc.channel || '';
+  mk.onclick = async () => { try { const r = db.ref('channels/' + curServer).push(); await r.set({ name: 'novidades-do-concord' }); await R().child('nc').set({ on: true, channel: r.key, since: nowS() }); toast('Canal criado e novidades ativadas! 📢'); } catch (e) { toast('Erro: ' + e.message); } };
+  d.append(on_, el('small', null, 'Escolha um canal de texto existente ou crie um novo:'), sel, mk);
+  k.save(d, async () => { if (on_.input.checked && !sel.value) throw new Error('Escolha um canal.'); await R().child('nc').set({ on: on_.input.checked, channel: sel.value || null, since: nc.on && nc.channel === sel.value ? (nc.since || nowS()) : nowS() }); syncNews(); });
 };
 
 /* ---------- NOMES DE USUÁRIO ÚNICOS ---------- */
