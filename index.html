@@ -316,9 +316,10 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .dban{height:70px;margin:-14px -14px 0;border-radius:12px 12px 0 0;background:var(--hover) center/cover no-repeat}
 .pban{background-size:cover!important;background-position:center!important}
 
-.afw{position:relative;display:inline-grid;width:max-content;flex:none;line-height:0}
-.m .afw{justify-self:start}
+.afw{position:relative;display:inline-grid;width:max-content;height:max-content;flex:none;line-height:0}
+.m .afw{justify-self:start;align-self:start}
 .fr{position:absolute;inset:-12%;pointer-events:none;z-index:2}
+.fr.r::before{transform-origin:center}
 .fr svg{width:100%;height:100%;overflow:visible;display:block}
 .fr.r::before{content:'';position:absolute;inset:4%;border-radius:50%;-webkit-mask:radial-gradient(farthest-side,#0000 87%,#000 88%);mask:radial-gradient(farthest-side,#0000 87%,#000 88%)}
 .r-rainbow::before{background:conic-gradient(#ff3b3b,#ffb800,#7bff3b,#22e6ff,#4b5bff,#d63bff,#ff3b3b);animation:frspin 3s linear infinite}
