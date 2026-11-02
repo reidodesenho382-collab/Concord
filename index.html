@@ -344,6 +344,15 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 .frgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px}
 .frb{background:var(--hover);border:2px solid transparent;border-radius:10px;padding:16px 4px 6px;display:grid;justify-items:center;gap:8px;color:var(--text);line-height:1.2}
 .frb.on{border-color:var(--green)}.frb small{font-size:11px}
+
+dialog.svc{padding:0;overflow:hidden;width:min(380px,94vw);background:var(--side);color:var(--text);border:1px solid var(--line);border-radius:14px}
+dialog.svc::backdrop{background:#000a}
+.svb{height:110px;background:linear-gradient(120deg,#2c4a17,var(--green)) center/cover no-repeat}
+.svbody{padding:0 20px 20px;display:grid;gap:10px}
+.svbody .dic{width:64px;height:64px;border-radius:20px;font-size:26px;margin-top:-32px;border:4px solid var(--side)}
+.svbody h3{font-size:20px}.svbody p{color:var(--mute);font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.svbody .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.emoji[data-x],.stkimg[data-x],.srvtag[data-x]{cursor:pointer}
 </style>
 </head>
 <body>
@@ -746,7 +755,7 @@ function react(key, emo) {
 function fill(key) {
   const r = rows[key], m = r.m;
   const ping = renderText(r.txt, m.text || '', m.ts, m.eref); mediaInto(r.txt, m);
-  if (m.stk) { const src = m.stks && m.stks !== curServer ? m.stks : null; if (src && !bookData[src]) loadBook(src); const st = src ? (bookData[src] || { stickers: {} }).stickers[m.stk] : ownStickers()[m.stk]; if (st) { const im = el('img', 'stkimg'); im.src = st.img; im.alt = st.name; im.title = st.name; r.txt.append(im); } else r.txt.append(el('i', null, src && !bookData[src] ? '(carregando figurinha…)' : '(figurinha removida)')); }
+  if (m.stk) { const src = m.stks && m.stks !== curServer ? m.stks : null; if (src && !bookData[src]) loadBook(src); const st = src ? (bookData[src] || { stickers: {} }).stickers[m.stk] : ownStickers()[m.stk]; if (st) { const im = el('img', 'stkimg'); im.src = st.img; im.alt = st.name; im.title = st.name; if (src) { im.dataset.x = 1; im.title = st.name + ' · clique para ver o servidor'; im.onclick = e => { e.stopPropagation(); showServerCard(src); }; } r.txt.append(im); } else r.txt.append(el('i', null, src && !bookData[src] ? '(carregando figurinha…)' : '(figurinha removida)')); }
   if (m.edited) r.txt.append(el('span', 'edited', ' (editado)'));
   r.row.classList.toggle('ping', (ping || (m.reply && m.reply.uid === me.uid) || (m.rm && m.rm.some(x => myRoles[x]))) && m.uid !== me.uid);
   if (m.reply) r.txt.prepend(replyQuote(m.reply));
@@ -884,6 +893,25 @@ function toast(t, label, fn) {
   const d = el('div', 'toast', t);
   if (label) { const b = el('button', 'btn', label); b.onclick = () => { fn(); d.remove(); }; d.append(b); }
   document.body.append(d); setTimeout(() => d.remove(), label ? 30000 : 3500);
+}
+async function showServerCard(sid) {
+  let d = $('#svcard');
+  if (!d) { d = el('dialog', 'svc'); d.id = 'svcard'; document.body.append(d); d.addEventListener('click', e => { if (e.target === d) d.close(); }); }
+  const close = el('button', 'btn ghost', 'Fechar'); close.onclick = () => d.close();
+  d.replaceChildren(el('div', 'svbody', 'Carregando…')); if (!d.open) d.showModal();
+  let v = null, desc = '';
+  try { v = (await db.ref('servers/' + sid).get()).val(); } catch (e) { v = null; }
+  try { desc = (await db.ref('discover/' + sid + '/desc').get()).val() || ''; } catch (e) {}
+  const body = el('div', 'svbody');
+  if (!v) { body.append(el('h3', null, 'Servidor indisponível'), el('p', null, 'Esse servidor não existe mais.')); const a = el('div', 'acts'); a.append(close); body.append(a); d.replaceChildren(body); return; }
+  const ban = el('div', 'svb'); if (safeImg(v.banner)) ban.style.backgroundImage = `url("${v.banner}")`;
+  const ic = el('div', 'dic'); if (v.icon) { const im = el('img'); im.src = v.icon; im.alt = ''; ic.append(im); } else ic.textContent = (v.name || '?')[0].toUpperCase();
+  const joined = !!lastRailList[sid], go = el('button', 'btn', joined ? 'Abrir servidor' : 'Entrar'), acts = el('div', 'acts');
+  go.onclick = async () => { go.disabled = true; try { if (joined) selectServer(sid, v.name); else await joinServer(sid); d.close(); } catch (e) { toast('Erro: ' + e.message); go.disabled = false; } };
+  body.append(ic, el('h3', null, v.name || 'Servidor'));
+  if (joined) body.append(el('small', null, '✅ Você já está neste servidor'));
+  if (desc) body.append(el('p', null, desc));
+  acts.append(close, go); body.append(acts); d.replaceChildren(ban, body);
 }
 async function joinServer(id) {
   const n = await db.ref(`servers/${id}/name`).get();
@@ -1707,7 +1735,7 @@ function emojiInto(box, text) {
   text.split(/(:[a-z0-9_]{2,32}:)/i).forEach((p, i) => {
     if (!p) return;
     const o = i % 2 ? findEmoji(p.slice(1, -1).toLowerCase()) : null;
-    if (o) { const im = el('img', 'emoji'); im.src = o.img; im.alt = p; im.title = p; box.append(im); } else box.append(document.createTextNode(p));
+    if (o) { const im = el('img', 'emoji'); im.src = o.img; im.alt = p; im.title = p; const xs = curEref && curEref[p.slice(1, -1).toLowerCase()]; if (xs && xs !== curServer) { im.dataset.x = 1; im.title = p + ' · clique para ver o servidor'; im.onclick = e => { e.stopPropagation(); showServerCard(xs); }; } box.append(im); } else box.append(document.createTextNode(p));
   });
 }
 function fitImg(f, z, cb) {
@@ -1804,14 +1832,14 @@ function findEmoji(name) {
 /* ---------- tags de servidor ---------- */
 const tagCache = {};
 const getTag = sid => tagCache[sid] || (tagCache[sid] = db.ref('servers/' + sid + '/tag').get().then(x => x.val()));
-function tagBadge(t) {
-  const b = el('span', 'srvtag');
+function tagBadge(t, sid) {
+  const b = el('span', 'srvtag'); if (sid) { b.dataset.x = 1; b.title = 'Ver o servidor desta tag'; b.onclick = e => { e.stopPropagation(); showServerCard(sid); }; }
   if (t.img) { const im = el('img'); im.src = t.img; im.alt = ''; b.append(im); } else if (t.emoji) b.append(document.createTextNode(t.emoji));
   b.append(document.createTextNode(t.text)); return b;
 }
 function attachTag(span, uid) {
   if (!uid || String(uid).startsWith('bot_')) return;
-  Promise.resolve(getUser(uid)).then(u => u && u.tagSid ? getTag(u.tagSid) : null).then(t => { if (t && t.text) span.replaceWith(tagBadge(t)); }).catch(() => {});
+  Promise.resolve(getUser(uid)).then(u => u && u.tagSid ? getTag(u.tagSid).then(t => [t, u.tagSid]) : null).then(r => { if (r && r[0] && r[0].text) span.replaceWith(tagBadge(r[0], r[1])); }).catch(() => {});
 }
 async function fillTagSelect() {
   const sel = $('#s-tag'); sel.replaceChildren(); const o0 = el('option', null, 'Nenhuma'); o0.value = ''; sel.append(o0); sel.value = '';
