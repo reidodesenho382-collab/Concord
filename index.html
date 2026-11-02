@@ -286,15 +286,20 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 #limbar{background:#4a3a14;color:#ffd98a;font-size:13px;padding:6px 12px;cursor:pointer;text-align:center}
 #ac-body,#sx-body,#nm-body{display:grid;gap:10px}#ac,#sx,#nm{width:min(460px,94vw);max-height:92dvh;overflow:auto}
 /* onboarding do servidor */
-#ob{width:min(500px,94vw);max-height:90dvh;overflow:auto}
-#ob-body{display:grid;gap:12px}
-#ob h3{font-size:21px;margin:0}#ob p{color:var(--mute);line-height:1.5}
-.obq{background:var(--rail);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px}
-.obopts{display:flex;flex-wrap:wrap;gap:8px}
-.chip{background:var(--side);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:8px 14px}
-.chip:hover{background:var(--hover)}
-.chip.on{background:var(--green);color:var(--ink);border-color:var(--green);font-weight:600}
-#ob .nav{display:flex;gap:8px}#ob .nav .btn{flex:1}
+#ob{width:min(620px,94vw);max-height:92dvh;overflow:auto;padding:28px}
+#ob-body{display:grid;gap:14px}
+#ob h3{font-size:26px;margin:0;line-height:1.2}#ob p{color:var(--mute);line-height:1.5}
+#ob .obhead{color:var(--green);font-weight:600}
+#ob .obstep{color:var(--mute);font-size:14px}
+.obgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0}
+.opt{display:flex;align-items:center;gap:12px;text-align:left;background:transparent;color:var(--text);border:2px solid var(--line);border-radius:12px;padding:18px 16px;font-weight:600;font-size:16px}
+.opt:hover{background:var(--hover)}
+.opt.on{border-color:var(--green);background:#73cb2722}
+.opt .oe{font-size:26px;line-height:1}
+#ob .nav{display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap}
+#ob .nav .btn{padding:12px 24px;min-width:110px}
+#ob .nav small{flex:1;min-width:140px}
+@media(max-width:480px){.obgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -2243,37 +2248,39 @@ function obCheck() {
 }
 $('#obbtn').onclick = () => openServerOB();
 function openServerOB(preview) {
-  const sid = curServer, d = $('#ob'), b = $('#ob-body'), qs = obQs(), pick = {};
+  const sid = curServer, d = $('#ob'), b = $('#ob-body'), qs = obQs(), pick = {}; let n = 0;
   if (!qs.length) return toast('Este servidor ainda não tem perguntas de onboarding.');
-  b.replaceChildren(el('h3', null, cfg.ob.title || 'Bem-vindo(a) a ' + $('#sname').textContent + '!'), el('p', null, cfg.ob.desc || 'Responda para personalizar sua experiência e receber os cargos certos.'));
-  qs.forEach(([qid, q]) => {
-    const card = el('div', 'obq'), opts = el('div', 'obopts'); pick[qid] = new Set();
-    card.append(el('b', null, q.q + (q.req ? ' *' : '')), el('small', null, q.multi ? 'Escolha quantas quiser' : 'Escolha uma'));
-    Object.entries(q.opts).forEach(([oid, o]) => {
-      const rs = Object.keys(o.roles || {}), chip = el('button', 'chip', (o.emoji ? o.emoji + ' ' : '') + o.label); chip.type = 'button';
-      if (!preview && rs.length && rs.every(r => myRoles[r])) { pick[qid].add(oid); chip.classList.add('on'); }
-      chip.onclick = () => {
-        if (pick[qid].has(oid)) { pick[qid].delete(oid); chip.classList.remove('on'); return; }
-        if (!q.multi) { pick[qid].clear(); opts.querySelectorAll('.chip').forEach(x => x.classList.remove('on')); }
-        pick[qid].add(oid); chip.classList.add('on');
-      };
-      opts.append(chip);
-    });
-    card.append(opts); b.append(card);
-  });
-  const nav = el('div', 'nav'), sk = el('button', 'btn ghost', preview ? 'Fechar prévia' : 'Pular por enquanto'), ok = el('button', 'btn', 'Concluir'); sk.type = ok.type = 'button';
-  sk.onclick = () => { if (!preview) obSetDone(sid); d.close(); }; nav.append(sk); if (!preview) nav.append(ok); b.append(nav);
-  ok.onclick = async () => {
-    for (const [qid, q] of qs) if (q.req && !pick[qid].size) return toast('Responda: ' + q.q);
+  qs.forEach(([qid, q]) => { pick[qid] = new Set(); if (!preview) Object.entries(q.opts).forEach(([oid, o]) => { const rs = Object.keys(o.roles || {}); if (rs.length && rs.every(r => myRoles[r])) pick[qid].add(oid); }); });
+  const finish = async btn => {
     const all = new Set(), add = new Set();
     qs.forEach(([qid, q]) => Object.entries(q.opts).forEach(([oid, o]) => Object.keys(o.roles || {}).forEach(r => { all.add(r); if (pick[qid].has(oid)) add.add(r); })));
     const upd = {}; all.forEach(r => { if (obSafe(r)) upd[`obRoles/${sid}/${me.uid}/${r}`] = add.has(r) ? true : null; });
-    ok.disabled = true;
+    btn.disabled = true;
     try { if (Object.keys(upd).length) await db.ref().update(upd); obSetDone(sid); d.close(); toast('Pronto! Seus cargos foram atualizados. 🎉'); }
     catch (e) { toast(/permission/i.test(e.message) ? 'Sem permissão: o dono precisa publicar as novas regras do Firebase para o onboarding (obRoles).' : 'Erro: ' + e.message); }
-    ok.disabled = false;
+    btn.disabled = false;
   };
-  if (!d.open) d.showModal();
+  const draw = () => {
+    const [qid, q] = qs[n], last = n === qs.length - 1; b.replaceChildren();
+    if (n === 0) { b.append(el('div', 'obhead', cfg.ob.title || 'Bem-vindo(a) a ' + $('#sname').textContent + '!')); if (cfg.ob.desc) b.append(el('p', null, cfg.ob.desc)); }
+    b.append(el('div', 'obstep', 'Pergunta ' + (n + 1) + ' de ' + qs.length), el('h3', null, q.q + (q.req ? ' *' : '')));
+    const grid = el('div', 'obgrid');
+    Object.entries(q.opts).forEach(([oid, o]) => {
+      const bt = el('button', 'opt' + (pick[qid].has(oid) ? ' on' : '')); bt.type = 'button';
+      if (o.emoji) bt.append(el('span', 'oe', o.emoji)); bt.append(el('span', null, o.label));
+      bt.onclick = () => {
+        if (pick[qid].has(oid)) { pick[qid].delete(oid); bt.classList.remove('on'); return; }
+        if (!q.multi) { pick[qid].clear(); grid.querySelectorAll('.opt').forEach(x => x.classList.remove('on')); }
+        pick[qid].add(oid); bt.classList.add('on');
+      };
+      grid.append(bt);
+    });
+    const nav = el('div', 'nav'), back = el('button', 'btn ghost', n === 0 ? 'Pular' : 'Voltar'), next = el('button', 'btn', last ? (preview ? 'Fechar prévia' : 'Concluir 🎉') : 'Avançar'); back.type = next.type = 'button';
+    back.onclick = () => { if (n === 0) { if (!preview) obSetDone(sid); d.close(); } else { n--; draw(); } };
+    next.onclick = () => { if (q.req && !pick[qid].size) return toast('Escolha pelo menos uma opção.'); if (!last) { n++; draw(); } else if (preview) d.close(); else finish(next); };
+    nav.append(back, next, el('small', null, q.multi ? 'Escolha todas que se aplicam.' : 'Escolha uma opção.')); b.append(grid, nav);
+  };
+  draw(); if (!d.open) d.showModal();
 }
 BP.ob = (c, k) => {
   const ob = cfg.ob || {}, safe = Object.entries(roles).filter(([id]) => obSafe(id)), id8 = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
