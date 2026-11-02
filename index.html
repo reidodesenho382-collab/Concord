@@ -1455,8 +1455,8 @@ CB['!ajuda'] = () => _h2() + (cfg.xp && cfg.xp.on ? '\n📈 Níveis: ' + ['nivel
 
 /* ---------- PAINEL DO CONCORDBOT ---------- */
 const R = () => db.ref('botcfg/' + curServer);
-/* O painel do ConcordBot é um site separado (concordbot.html). Ajuste a URL se hospedar em outro lugar. */
-const BOT_PANEL_URL = 'concordbot.html';
+/* O painel do ConcordBot é um site separado (concordbot.html).  */
+const BOT_PANEL_URL = 'https://reidodesenho382-collab.github.io/ConcordBot/';
 const openBotSite = () => window.open(BOT_PANEL_URL + (curServer && curServer !== 'dm' ? '?server=' + curServer : ''), '_blank');
 $('#bpbtn').onclick = () => openBotSite();
 const botJoined = () => !!cfg && cfg.joined !== false && (!!cfg.joined || Object.keys(cfg).length > 0);
