@@ -300,6 +300,16 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 #ob .nav .btn{padding:12px 24px;min-width:110px}
 #ob .nav small{flex:1;min-width:140px}
 @media(max-width:480px){.obgrid{grid-template-columns:1fr}}
+
+.srv.disc{color:var(--green);font-size:22px}
+.discw{max-width:900px;margin:0 auto;padding:20px 18px 40px;display:grid;gap:12px}
+.discw h2{font-size:22px}.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{background:var(--side);border:1px solid var(--line);border-radius:16px;padding:4px 12px;font-size:13px;color:var(--mute)}.chips button.on{background:var(--green);color:var(--ink);border-color:var(--green);font-weight:600}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.dcard{background:var(--side);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;align-content:space-between}
+.dcard .h{display:flex;gap:12px;align-items:center;min-width:0}.dcard .h b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dcard .h small{color:var(--mute);font-size:12px}
+.dic{width:48px;height:48px;border-radius:16px;background:var(--hover);display:grid;place-items:center;font-weight:700;font-size:19px;overflow:hidden;flex:none}.dic img{width:100%;height:100%;object-fit:cover}
+.dcard p{color:var(--mute);font-size:14px;line-height:1.4;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -529,6 +539,7 @@ function renderRail(list) {
     if (v.icon) { const im = el('img'); im.src = v.icon; im.alt = ''; b.append(im); }
     b.title = v.name; b.onclick = () => selectServer(id, v.name); srvBadge(b, id); rail.append(b);
   });
+  const dc = el('button', 'srv disc' + (curChannel === 'discover' ? ' on' : ''), '🧭'); dc.title = 'Descubra'; dc.onclick = showDiscover; rail.append(dc);
   rail.append(el('div', 'sep'));
   const add = el('button', 'srv add', '＋'); add.title = 'Criar ou entrar em um servidor';
   add.onclick = () => { $('#derr').textContent = ''; $('#dlg').showModal(); }; rail.append(add);
@@ -818,7 +829,7 @@ function showHome() {
   if (innerWidth <= 700) document.body.classList.add('nav-open');
   clear(chanSubs); clear(msgSubs); curHome = true; curServer = null; curChannel = null; members = {}; renderMembers();
   document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('home')));
-  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#obbtn').hidden = true; $('#bp').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
+  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#obbtn').hidden = true; $('#bpbtn').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
   $('#msgs').replaceChildren(el('div', 'empty', 'Adicione amigos pelo nome de usuário, converse por mensagem direta e ligue para eles.'));
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Enviar mensagem';
   const c = $('#chans'); c.replaceChildren();
@@ -1017,7 +1028,7 @@ const roleColor = uid => { const r = Object.keys({ ...(oroles[uid] || {}), ...(m
 function calcPerms() {
   myRoles = { ...(oroles[me.uid] || {}), ...(mroles[me.uid] || {}) }; perms = {};
   Object.keys(mroles[me.uid] || {}).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
-  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; renderChans();
+  $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; $('#bpbtn').hidden = !curServer || curServer === 'dm'; renderChans();
 }
 let curCats = {};
 const byPos = (x, y) => (x[1].pos ?? 1e9) - (y[1].pos ?? 1e9);
@@ -1860,9 +1871,36 @@ function photoData(f, maxW, cb) {
   img.onload = () => { const k = Math.min(1, maxW / img.width), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg', .78)); };
   img.onerror = () => toast('Não consegui abrir essa imagem.'); img.src = url;
 }
+const DCATS = ['Comunidade', 'Jogos', 'Música', 'Estudo', 'Tecnologia', 'Arte', 'Outros'];
+function showDiscover() {
+  showHome(); curHome = false; curServer = 'dm'; curChannel = 'discover';
+  document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('disc')));
+  $('#cname').textContent = '🧭 Descubra'; const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Descubra novos servidores'; closeDrawers();
+  const wrap = el('div', 'discw'), q = el('input'), chips = el('div', 'chips'), grid = el('div', 'dgrid'); q.placeholder = 'Buscar servidores…';
+  wrap.append(el('h2', null, '🧭 Descubra comunidades'), el('small', null, 'Servidores escolhidos pela equipe do Concord. Entre em um e comece a conversar!'), q, chips, grid); $('#msgs').replaceChildren(wrap);
+  let all = [], cat = '';
+  const draw = () => {
+    chips.replaceChildren(); ['', ...DCATS.filter(c => all.some(x => x.cat === c))].forEach(c => { const b = el('button', c === cat ? 'on' : '', c || 'Todos'); b.onclick = () => { cat = c; draw(); }; chips.append(b); });
+    const t = q.value.trim().toLowerCase(), L = all.filter(x => (!cat || x.cat === cat) && (!t || (x.name + ' ' + (x.desc || '')).toLowerCase().includes(t))); grid.replaceChildren();
+    if (!L.length) grid.append(el('div', 'empty', all.length ? 'Nenhum servidor encontrado.' : 'Ainda não há servidores em destaque. Volte em breve!'));
+    L.forEach(x => {
+      const c = el('div', 'dcard'), h = el('div', 'h'), ic = el('div', 'dic'), t2 = el('div'), joined = !!(lastRailList || {})[x.id];
+      if (x.icon) { const im = el('img'); im.src = x.icon; im.alt = ''; ic.append(im); } else ic.textContent = (x.name || '?')[0].toUpperCase();
+      t2.style.minWidth = 0; t2.append(el('b', null, x.name), el('small', null, (x.pin ? '⭐ Destaque · ' : '') + (x.cat || ''))); h.append(ic, t2);
+      const b = el('button', 'btn' + (joined ? ' ghost' : ''), joined ? 'Abrir' : 'Entrar'); b.onclick = () => joined ? selectServer(x.id, x.name) : joinServer(x.id);
+      c.append(h, el('p', null, x.desc || ''), b); grid.append(c);
+    });
+  };
+  q.oninput = draw; draw();
+  on(msgSubs, db.ref('discover'), 'value', async s => {
+    const L = (await Promise.all(Object.entries(s.val() || {}).map(async ([id, d]) => { try { const v = (await db.ref('servers/' + id).get()).val(); return v ? { id, ...d, name: v.name, icon: v.icon || '' } : null; } catch (e) { return null; } }))).filter(Boolean)
+      .sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || (b.ts || 0) - (a.ts || 0));
+    if (curChannel !== 'discover') return; all = L; draw();
+  });
+}
 function showNews() {
   clear(msgSubs); curServer = 'dm'; curChannel = 'news'; lastMsg = null; rows = {}; $('#typing').textContent = '';
-  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#obbtn').hidden = true;
+  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#obbtn').hidden = true; $('#bpbtn').hidden = true;
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Só a equipe do Concord publica aqui'; closeDrawers(); markRead('dm/news');
   const wrap = el('div', 'newsw'), feed = el('div'); wrap.append(feed); $('#msgs').replaceChildren(wrap);
   on(msgSubs, db.ref('news').limitToLast(20), 'value', s => {
