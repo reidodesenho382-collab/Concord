@@ -285,6 +285,16 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 #rp,#md,#wn{width:min(460px,94vw)}
 #limbar{background:#4a3a14;color:#ffd98a;font-size:13px;padding:6px 12px;cursor:pointer;text-align:center}
 #ac-body,#sx-body,#nm-body{display:grid;gap:10px}#ac,#sx,#nm{width:min(460px,94vw);max-height:92dvh;overflow:auto}
+/* onboarding do servidor */
+#ob{width:min(500px,94vw);max-height:90dvh;overflow:auto}
+#ob-body{display:grid;gap:12px}
+#ob h3{font-size:21px;margin:0}#ob p{color:var(--mute);line-height:1.5}
+.obq{background:var(--rail);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px}
+.obopts{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--side);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:8px 14px}
+.chip:hover{background:var(--hover)}
+.chip.on{background:var(--green);color:var(--ink);border-color:var(--green);font-weight:600}
+#ob .nav{display:flex;gap:8px}#ob .nav .btn{flex:1}
 </style>
 </head>
 <body>
@@ -308,7 +318,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
   <div id="scrim"></div>
   <nav class="rail" id="rail"></nav>
   <aside class="side">
-    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="bpbtn" title="Painel do ConcordBot" hidden>🤖</button><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
+    <div class="head"><span id="sname">Concord</span><div><button class="icon" id="obbtn" title="Onboarding: escolher cargos" hidden>🎯</button><button class="icon" id="bpbtn" title="Painel do ConcordBot" hidden>🤖</button><button class="icon" id="svset" title="Configurações do servidor" hidden>⚙</button><button class="icon" id="invite" title="Copiar link de convite">⧉</button></div></div>
     <div id="chans"></div>
     <div class="me"><div id="meav"></div><b id="mename"></b><button class="icon" id="settings" title="Configurações">⚙</button><button class="icon" id="logout" title="Sair">⏻</button></div>
   </aside>
@@ -339,6 +349,7 @@ code{background:#0007;border-radius:4px;padding:1px 5px;font-family:ui-monospace
 
 <div id="bp" hidden><nav class="svn" id="bpn"></nav><div class="svc" id="bpc"></div><button class="icon svx" id="bpx" title="Fechar">✕</button></div>
 
+<dialog id="ob"><div id="ob-body"></div></dialog>
 <div id="blk" hidden></div>
 <dialog id="ac"><div id="ac-body"></div></dialog>
 <dialog id="sx"><div id="sx-body"></div></dialog>
@@ -562,13 +573,14 @@ function selectServer(id, name) {
   clear(chanSubs); curServer = id; curChannel = null; curHome = false; $('#invite').hidden = false;
   document.querySelectorAll('.srv').forEach(b => b.classList.toggle('on', b.title === name));
   $('#sname').textContent = name; $('#addch').hidden = false;
-  roles = {}; mroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {}; cfg = {}; curCats = {};
-  db.ref('servers/' + id + '/owner').get().then(s => { serverOwner = s.val(); calcPerms(); });
+  roles = {}; mroles = {}; oroles = {}; bots = {}; perms = {}; myRoles = {}; curChans = {}; serverOwner = null; bans = {}; mutes = {}; cfg = {}; curCats = {}; $('#obbtn').hidden = true;
+  db.ref('servers/' + id + '/owner').get().then(s => { serverOwner = s.val(); calcPerms(); obCheck(); });
   const subs = chanSubs;
   on(subs, db.ref('channels/' + id), 'value', s => { if (id !== curServer) return; curChans = s.val() || {}; renderChans(); svRefresh(); });
-  on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); svRefresh(); });
+  on(subs, db.ref('roles/' + id), 'value', s => { roles = s.val() || {}; calcPerms(); obCheck(); svRefresh(); });
   on(subs, db.ref('memberRoles/' + id), 'value', s => { mroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
-  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; svRefresh(); bpRefresh(); Object.keys(rows).forEach(k => fill(k)); });
+  on(subs, db.ref('obRoles/' + id), 'value', s => { oroles = s.val() || {}; calcPerms(); renderMembers(); svRefresh(); });
+  on(subs, db.ref('botcfg/' + id), 'value', s => { cfg = s.val() || {}; $('#obbtn').hidden = !(cfg.ob && cfg.ob.on && obQs().length); obCheck(); svRefresh(); bpRefresh(); Object.keys(rows).forEach(k => fill(k)); });
   on(subs, db.ref('servers/' + id + '/cats'), 'value', s => { curCats = s.val() || {}; renderChans(); svRefresh(); });
   on(subs, db.ref('bans/' + id), 'value', s => { bans = s.val() || {}; if (bans[me.uid]) forceLeave(id, 'banido'); });
   on(subs, db.ref('mutes/' + id), 'value', s => { mutes = s.val() || {}; });
@@ -802,7 +814,7 @@ function showHome() {
   if (innerWidth <= 700) document.body.classList.add('nav-open');
   clear(chanSubs); clear(msgSubs); curHome = true; curServer = null; curChannel = null; members = {}; renderMembers();
   document.querySelectorAll('.srv').forEach(x => x.classList.toggle('on', x.classList.contains('home')));
-  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#bpbtn').hidden = true; $('#bp').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
+  $('#sname').textContent = 'Amigos'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#sv').hidden = true; $('#bpbtn').hidden = true; $('#obbtn').hidden = true; $('#bp').hidden = true; curChans = {}; $('#cname').textContent = 'Início';
   $('#msgs').replaceChildren(el('div', 'empty', 'Adicione amigos pelo nome de usuário, converse por mensagem direta e ligue para eles.'));
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Enviar mensagem';
   const c = $('#chans'); c.replaceChildren();
@@ -991,16 +1003,16 @@ async function showProfile(id) {
 }
 
 /* ---------- cargos, permissões, canais e bots ---------- */
-let roles = {}, mroles = {}, bots = {}, perms = {}, myRoles = {}, curChans = {}, svTab = 'channels', editCh = null;
+let roles = {}, mroles = {}, oroles = {}, bots = {}, perms = {}, myRoles = {}, curChans = {}, svTab = 'channels', editCh = null;
 const isOwner = () => !!me && me.uid === serverOwner;
 const can = p => !!curServer && curServer !== 'dm' && (isOwner() || !!perms.admin || !!perms[p]);
 const hasRole = o => o && Object.keys(o).some(r => myRoles[r]);
 const canSee = c => !!c && (c.ticket ? (c.ticket.owner === me.uid || !!(c.viewUsers && c.viewUsers[me.uid]) || staff()) : (!c.view || can('admin') || hasRole(c.view)));
 const canSend = () => { if (curServer === 'dm') return true; if ((mutes[me.uid] || 0) > Date.now()) return false; const c = curChans[curChannel]; if (c && c.ticket && c.ticket.status === 'closed' && !staff()) return false; return !c || !c.send || can('admin') || hasRole(c.send); };
-const roleColor = uid => { const r = Object.keys(mroles[uid] || {}).map(k => roles[k]).find(x => x && x.color); return r ? r.color : ''; };
+const roleColor = uid => { const r = Object.keys({ ...(oroles[uid] || {}), ...(mroles[uid] || {}) }).map(k => roles[k]).find(x => x && x.color); return r ? r.color : ''; };
 function calcPerms() {
-  myRoles = mroles[me.uid] || {}; perms = {};
-  Object.keys(myRoles).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
+  myRoles = { ...(oroles[me.uid] || {}), ...(mroles[me.uid] || {}) }; perms = {};
+  Object.keys(mroles[me.uid] || {}).forEach(r => Object.assign(perms, (roles[r] || {}).perms));
   $('#addch').hidden = !can('channels'); $('#svset').hidden = !curServer || curServer === 'dm'; $('#bpbtn').hidden = !curServer || curServer === 'dm'; renderChans();
 }
 let curCats = {};
@@ -1191,7 +1203,7 @@ async function deleteServer(id) {
   const t = prompt('Isso apaga o servidor, os canais, cargos, bots e mensagens para todos.\nDigite o nome do servidor para confirmar:\n\n' + name);
   if (t === null) return; if (t.trim() !== name) return toast('Nome incorreto. Nada foi apagado.');
   try {
-    for (const p of ['messages', 'bots', 'roles', 'memberRoles', 'channels', 'members']) await db.ref(`${p}/${id}`).remove();
+    for (const p of ['messages', 'bots', 'roles', 'memberRoles', 'obRoles', 'channels', 'members']) await db.ref(`${p}/${id}`).remove();
     await db.ref('servers/' + id).remove();
   } catch (e) { toast('Não foi possível apagar: ' + e.message); }
 }
@@ -1459,7 +1471,7 @@ function kit(c) {
 function renderBP() {
   const n = $('#bpn'), c = $('#bpc'), h = el('div', 'bphead'), lg = el('img'); n.replaceChildren(); c.replaceChildren();
   lg.src = document.querySelector('.logo').src; lg.alt = ''; lg.style.cssText = 'width:38px;height:38px;border-radius:11px'; h.append(lg, el('b', null, 'ConcordBot')); n.append(h);
-  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP'], ['tk', '🎫 Tickets']].forEach(([k, l]) => {
+  [['home', '📊 Visão geral'], ['welcome', '👋 Boas-vindas'], ['cmds', '⌨️ Comandos'], ['eco', '💰 Economia e loja'], ['mod', '🛡 Auto-moderação'], ['xp', '📈 Níveis e XP'], ['tk', '🎫 Tickets'], ['ob', '🎯 Onboarding']].forEach(([k, l]) => {
     const b = el('button', k === bpTab ? 'on' : '', l); b.onclick = () => { bpTab = k; renderBP(); }; n.append(b);
   });
   BP[bpTab](c, kit(c));
@@ -1877,7 +1889,7 @@ function watchServers() {
     const k = 's:' + sid; if (watched[k]) return; watched[k] = 1;
     const ref = db.ref('channels/' + sid), fn = s => Object.entries(s.val() || {}).forEach(([cid, c]) => { if (c.type !== 'voice' && !c.view && !c.ticket) listen(sid + '/' + cid, `messages/${sid}/${cid}`, c.name); });
     ref.on('value', fn); serverSubs.push(() => ref.off('value', fn));
-    const rr = db.ref(`memberRoles/${sid}/${me.uid}`), fr = s => { myRolesBy[sid] = s.val() || {}; }; rr.on('value', fr); serverSubs.push(() => rr.off('value', fr));
+    let ra = {}, rb = {}; const rr = db.ref(`memberRoles/${sid}/${me.uid}`), ro = db.ref(`obRoles/${sid}/${me.uid}`), fr = s => { ra = s.val() || {}; myRolesBy[sid] = { ...rb, ...ra }; }, fo = s => { rb = s.val() || {}; myRolesBy[sid] = { ...rb, ...ra }; }; rr.on('value', fr); ro.on('value', fo); serverSubs.push(() => rr.off('value', fr), () => ro.off('value', fo));
   });
 }
 function initNotify() {
@@ -1930,7 +1942,7 @@ function photoData(f, maxW, cb) {
 }
 function showNews() {
   clear(msgSubs); curServer = 'dm'; curChannel = 'news'; lastMsg = null; rows = {}; $('#typing').textContent = '';
-  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#bpbtn').hidden = true;
+  $('#cname').textContent = '📢 Concord Oficial ✔'; $('#addch').hidden = true; $('#invite').hidden = true; $('#svset').hidden = true; $('#bpbtn').hidden = true; $('#obbtn').hidden = true;
   const bx = $('#box'); bx.disabled = true; bx.placeholder = 'Só a equipe do Concord publica aqui'; closeDrawers(); markRead('dm/news');
   const wrap = el('div', 'newsw'), feed = el('div'); wrap.append(feed); $('#msgs').replaceChildren(wrap);
   on(msgSubs, db.ref('news').limitToLast(20), 'value', s => {
@@ -2216,6 +2228,76 @@ function openReport(ctx) {
   };
   cl.onclick = () => d.close(); d.showModal();
 }
+/* ---------- ONBOARDING DO SERVIDOR ---------- */
+const obDoneKey = sid => 'concord_obd_' + sid + '_' + (me && me.uid);
+const obIsDone = sid => { try { return !!localStorage.getItem(obDoneKey(sid)); } catch (e) { return false; } };
+const obSetDone = sid => { try { localStorage.setItem(obDoneKey(sid), '1'); } catch (e) {} };
+const obAsked = {};
+const obQs = () => Object.entries((cfg.ob && cfg.ob.qs) || {}).filter(([, q]) => q && q.opts && Object.keys(q.opts).length);
+const obSafe = rid => !!roles[rid] && !Object.keys(roles[rid].perms || {}).length;
+function obCheck() {
+  const sid = curServer; if (!sid || sid === 'dm' || !me || serverOwner == null || isOwner()) return;
+  if (!(cfg.ob && cfg.ob.on) || !obQs().length || !Object.keys(roles).length || obAsked[sid] || obIsDone(sid)) return;
+  obAsked[sid] = 1; openServerOB();
+}
+$('#obbtn').onclick = () => openServerOB();
+function openServerOB(preview) {
+  const sid = curServer, d = $('#ob'), b = $('#ob-body'), qs = obQs(), pick = {};
+  if (!qs.length) return toast('Este servidor ainda não tem perguntas de onboarding.');
+  b.replaceChildren(el('h3', null, cfg.ob.title || 'Bem-vindo(a) a ' + $('#sname').textContent + '!'), el('p', null, cfg.ob.desc || 'Responda para personalizar sua experiência e receber os cargos certos.'));
+  qs.forEach(([qid, q]) => {
+    const card = el('div', 'obq'), opts = el('div', 'obopts'); pick[qid] = new Set();
+    card.append(el('b', null, q.q + (q.req ? ' *' : '')), el('small', null, q.multi ? 'Escolha quantas quiser' : 'Escolha uma'));
+    Object.entries(q.opts).forEach(([oid, o]) => {
+      const rs = Object.keys(o.roles || {}), chip = el('button', 'chip', (o.emoji ? o.emoji + ' ' : '') + o.label); chip.type = 'button';
+      if (!preview && rs.length && rs.every(r => myRoles[r])) { pick[qid].add(oid); chip.classList.add('on'); }
+      chip.onclick = () => {
+        if (pick[qid].has(oid)) { pick[qid].delete(oid); chip.classList.remove('on'); return; }
+        if (!q.multi) { pick[qid].clear(); opts.querySelectorAll('.chip').forEach(x => x.classList.remove('on')); }
+        pick[qid].add(oid); chip.classList.add('on');
+      };
+      opts.append(chip);
+    });
+    card.append(opts); b.append(card);
+  });
+  const nav = el('div', 'nav'), sk = el('button', 'btn ghost', preview ? 'Fechar prévia' : 'Pular por enquanto'), ok = el('button', 'btn', 'Concluir'); sk.type = ok.type = 'button';
+  sk.onclick = () => { if (!preview) obSetDone(sid); d.close(); }; nav.append(sk); if (!preview) nav.append(ok); b.append(nav);
+  ok.onclick = async () => {
+    for (const [qid, q] of qs) if (q.req && !pick[qid].size) return toast('Responda: ' + q.q);
+    const all = new Set(), add = new Set();
+    qs.forEach(([qid, q]) => Object.entries(q.opts).forEach(([oid, o]) => Object.keys(o.roles || {}).forEach(r => { all.add(r); if (pick[qid].has(oid)) add.add(r); })));
+    const upd = {}; all.forEach(r => { if (obSafe(r)) upd[`obRoles/${sid}/${me.uid}/${r}`] = add.has(r) ? true : null; });
+    ok.disabled = true;
+    try { if (Object.keys(upd).length) await db.ref().update(upd); obSetDone(sid); d.close(); toast('Pronto! Seus cargos foram atualizados. 🎉'); }
+    catch (e) { toast(/permission/i.test(e.message) ? 'Sem permissão: o dono precisa publicar as novas regras do Firebase para o onboarding (obRoles).' : 'Erro: ' + e.message); }
+    ok.disabled = false;
+  };
+  if (!d.open) d.showModal();
+}
+BP.ob = (c, k) => {
+  const ob = cfg.ob || {}, safe = Object.entries(roles).filter(([id]) => obSafe(id)), id8 = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const write = fn => {
+    const qs = JSON.parse(JSON.stringify(ob.qs || {})), rl = {}; fn(qs);
+    Object.values(qs).forEach(q => Object.values(q.opts || {}).forEach(o => Object.keys(o.roles || {}).forEach(r => rl[r] = true)));
+    return R().update({ 'ob/qs': Object.keys(qs).length ? qs : null, 'ob/roles': Object.keys(rl).length ? rl : null }).catch(e => toast('Erro: ' + e.message));
+  };
+  c.append(el('h2', null, '🎯 Onboarding'), el('small', null, 'Perguntas que novos membros respondem ao entrar para escolher cargos (e, com isso, quais canais enxergam). Só cargos sem permissões podem ser oferecidos.'));
+  let d = k.card('Configuração'); const on_ = k.chk('Onboarding ativado', ob.on), ti = k.inp('Título (opcional)', ob.title), de = el('textarea'), pv = el('button', 'btn ghost', '👀 Ver como o membro vê');
+  de.placeholder = 'Mensagem de boas-vindas (opcional)'; de.value = ob.desc || ''; ti.maxLength = 80; de.maxLength = 300; pv.onclick = () => openServerOB(true);
+  d.append(on_, ti, de); k.save(d, () => R().child('ob').update({ on: on_.input.checked, title: ti.value.trim() || null, desc: de.value.trim() || null })); d.append(pv);
+  Object.entries(ob.qs || {}).forEach(([qid, q]) => {
+    const d2 = k.card('❓ ' + q.q); d2.append(el('small', null, (q.multi ? 'múltipla escolha' : 'escolha única') + ' · ' + (q.req ? 'obrigatória' : 'opcional')));
+    Object.entries(q.opts || {}).forEach(([oid, o]) => k.row(d2, (o.emoji ? o.emoji + ' ' : '') + o.label + ' → ' + (Object.keys(o.roles || {}).map(r => (roles[r] || {}).name || '(cargo apagado)').join(', ') || 'sem cargo'), () => write(qs => delete qs[qid].opts[oid])));
+    const lb = k.inp('Nova opção (ex.: Jogador de Minecraft)'), em = k.inp('Emoji (opcional)'), pk = el('div'), sel = new Set(), add = el('button', 'btn ghost', '＋ Adicionar opção'), del = el('button', 'btn ghost', '🗑 Apagar pergunta'); lb.maxLength = 50; em.maxLength = 4;
+    safe.forEach(([rid, r]) => pk.append(k.chk('🎭 ' + r.name, false, v => v ? sel.add(rid) : sel.delete(rid)))); if (!safe.length) pk.append(el('small', null, 'Crie cargos sem permissões na aba Cargos do servidor para oferecê-los aqui.'));
+    add.onclick = () => { if (!lb.value.trim()) return toast('Escreva o texto da opção.'); write(qs => { (qs[qid].opts = qs[qid].opts || {})[id8()] = { label: lb.value.trim(), emoji: em.value.trim() || null, roles: sel.size ? Object.fromEntries([...sel].map(r => [r, true])) : null }; }); };
+    del.onclick = () => confirm('Apagar esta pergunta?') && write(qs => delete qs[qid]); d2.append(lb, em, el('small', null, 'Cargos que esta opção dá:'), pk, add, del);
+  });
+  d = k.card('Nova pergunta'); const nq = k.inp('Pergunta (ex.: Quais jogos você joga?)'), mu = k.chk('Permitir várias respostas', true), rq = k.chk('Resposta obrigatória', false), mk = el('button', 'btn', 'Criar pergunta'); nq.maxLength = 120;
+  mk.onclick = () => { if (!nq.value.trim()) return toast('Escreva a pergunta.'); write(qs => { qs[id8()] = { q: nq.value.trim(), multi: mu.input.checked, req: rq.input.checked }; }); };
+  d.append(nq, mu, rq, mk);
+};
+
 /* ---------- NOMES DE USUÁRIO ÚNICOS ---------- */
 let claimWarned = false;
 const nameKey = n => n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
